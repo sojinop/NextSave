@@ -810,14 +810,43 @@ body {
     .nav-links {
         display: none;
     }
-    
+
+    .nav-brand span {
+        display: none;
+    }
+
+    .nav-brand {
+        gap: 0;
+    }
+
     .status-indicator {
         display: none;
     }
     
     .mobile-menu-btn {
-        display: block;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(255, 255, 255, 0.04);
+        backdrop-filter: blur(18px);
+        transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), background 0.3s ease, border-color 0.3s ease;
     }
+
+    .mobile-menu-btn:hover {
+        transform: translateY(-1px);
+        background: rgba(255, 255, 255, 0.08);
+        border-color: rgba(255, 255, 255, 0.12);
+    }
+
+    .mobile-menu-btn svg {
+        width: 18px;
+        height: 18px;
+    }
+
 
     .hero {
         padding-top: 8rem;
