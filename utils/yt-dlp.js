@@ -1,47 +1,21 @@
-const { spawn } = require('child_process');
+const youtubeDl = require('youtube-dl-exec');
 
-function fetchMediaInfo(url) {
-  return new Promise((resolve, reject) => {
-    const ytDlp = process.platform === 'win32'
-      ? 'yt-dlp.exe'
-      : 'yt-dlp';
-
-    const yt = spawn(ytDlp, [
-      '-J',
-      '--no-playlist',
-      '--no-warnings',
-      '--no-call-home',
-      '--skip-download',
-      url
-    ]);
-
-    let stdout = '';
-    let stderr = '';
-
-    yt.stdout.on('data', (data) => {
-      stdout += data.toString();
+async function fetchMediaInfo(url) {
+  try {
+    return await youtubeDl(url, {
+      dumpJson: true,
+      noPlaylist: true,
+      noWarnings: true,
+      noCallHome: true,
+      skipDownload: true,
+      preferFreeFormats: true,
+      referer: url,
+      sourceAddress: '0.0.0.0'
     });
-
-    yt.stderr.on('data', (data) => {
-      stderr += data.toString();
-    });
-
-    yt.on('error', (error) => {
-      reject(new Error(`yt-dlp execution failed: ${error.message}`));
-    });
-
-    yt.on('close', (code) => {
-      if (code !== 0) {
-        return reject(new Error(stderr || `yt-dlp exited with code ${code}`));
-      }
-
-      try {
-        resolve(JSON.parse(stdout));
-      } catch {
-        reject(new Error('Failed to parse yt-dlp output'));
-      }
-    });
-  });
+  } catch (error) {
+    const message = error.stderr || error.message || String(error);
+    throw new Error(`youtube-dl execution failed: ${message}`);
+  }
 }
 
 module.exports = { fetchMediaInfo };
