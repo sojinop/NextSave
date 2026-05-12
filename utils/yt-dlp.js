@@ -1,44 +1,28 @@
-const { spawn } = require('child_process');
+const ytdlp = require('yt-dlp-exec');
 
-function fetchMediaInfo(url) {
-  return new Promise((resolve, reject) => {
-
-    const yt = spawn('npx', [
-      'yt-dlp',
-      '-J',
-      '--no-playlist',
-      '--no-warnings',
-      url
-    ]);
-
-    let stdout = '';
-    let stderr = '';
-
-    yt.stdout.on('data', (chunk) => {
-      stdout += chunk.toString();
+async function fetchMediaInfo(url) {
+  try {
+    const result = await ytdlp(url, {
+      dumpJson: true,
+      noPlaylist: true,
+      noWarnings: true,
+      noCallHome: true,
+      skipDownload: true,
+      quiet: true,
+      preferFreeFormats: true,
+      referer: url,
+      sourceAddress: '0.0.0.0'
     });
 
-    yt.stderr.on('data', (chunk) => {
-      stderr += chunk.toString();
-    });
+    if (typeof result === 'string') {
+      return JSON.parse(result);
+    }
 
-    yt.on('error', (error) => {
-      reject(new Error(`yt-dlp execution failed: ${error.message}`));
-    });
-
-    yt.on('close', (code) => {
-      if (code !== 0) {
-        return reject(new Error(stderr || `yt-dlp exited with code ${code}`));
-      }
-
-      try {
-        const json = JSON.parse(stdout);
-        resolve(json);
-      } catch (error) {
-        reject(new Error('Failed to parse yt-dlp output.'));
-      }
-    });
-  });
+    return result;
+  } catch (error) {
+    const message = error.stderr || error.message || String(error);
+    throw new Error(`yt-dlp execution failed: ${message}`);
+  }
 }
 
 module.exports = { fetchMediaInfo };

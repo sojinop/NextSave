@@ -2,6 +2,9 @@
   "name": "socialdownloader",
   "version": "1.0.0",
   "private": true,
+  "engines": {
+    "node": ">=18"
+  },
   "description": "Premium social media downloader with Node.js, Express, and yt-dlp.",
   "main": "server.js",
   "scripts": {
