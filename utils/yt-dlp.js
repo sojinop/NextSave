@@ -2,7 +2,14 @@ const { spawn } = require('child_process');
 
 function fetchMediaInfo(url) {
   return new Promise((resolve, reject) => {
-    const yt = spawn('yt-dlp', ['-J', '--no-playlist', '--no-warnings', url]);
+
+    const yt = spawn('npx', [
+      'yt-dlp',
+      '-J',
+      '--no-playlist',
+      '--no-warnings',
+      url
+    ]);
 
     let stdout = '';
     let stderr = '';
@@ -28,7 +35,7 @@ function fetchMediaInfo(url) {
         const json = JSON.parse(stdout);
         resolve(json);
       } catch (error) {
-        reject(new Error('Failed to parse yt-dlp output.')); 
+        reject(new Error('Failed to parse yt-dlp output.'));
       }
     });
   });
