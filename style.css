@@ -830,8 +830,7 @@ body {
     }
 
     .nav-links,
-    .status-indicator,
-    .lang-selector-container {
+    .status-indicator {
         display: none !important;
     }
 
