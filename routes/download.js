@@ -1,4 +1,5 @@
 const express = require('express');
+const axios = require('axios');
 const { detectPlatform, isSupportedUrl } = require('../utils/urlValidator');
 const { fetchMediaInfo } = require('../utils/yt-dlp');
 
@@ -81,6 +82,70 @@ router.post('/', async (req, res) => {
       success: false,
       message: 'Unable to process the link right now. Please try again later.'
     });
+  }
+});
+
+router.get('/file/:id', async (req, res) => {
+  const { id } = req.params;
+  const { url, title, ext } = req.query;
+
+  if (!url || !title || !ext) {
+    return res.status(400).json({ success: false, message: 'Missing required parameters.' });
+  }
+
+  try {
+    // Decode the URL if it was encoded
+    const decodedUrl = decodeURIComponent(url);
+
+    // Set content type based on file extension
+    const contentType = ext === 'mp4' ? 'video/mp4' :
+                       ext === 'webm' ? 'video/webm' :
+                       ext === 'mp3' ? 'audio/mpeg' :
+                       ext === 'm4a' ? 'audio/mp4' :
+                       'application/octet-stream';
+
+    // Sanitize filename - remove special characters that could cause issues
+    const sanitizedTitle = title.replace(/[^a-zA-Z0-9\s\-_]/g, '').replace(/\s+/g, '_').trim();
+    const filename = `${sanitizedTitle}.${ext}`;
+
+    // Set headers for download
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+
+    // Stream the file from the source URL with proper options
+    const response = await axios({
+      method: 'GET',
+      url: decodedUrl,
+      responseType: 'stream',
+      timeout: 60000, // 60 second timeout for large files
+      maxRedirects: 5,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1',
+        'Accept': '*/*',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Referer': decodedUrl
+      }
+    });
+
+    // Pipe the response stream to the client
+    response.data.pipe(res);
+
+    // Handle errors during streaming
+    response.data.on('error', (error) => {
+      console.error('Stream error:', error);
+      if (!res.headersSent) {
+        res.status(500).json({ success: false, message: 'Download failed during streaming.' });
+      }
+    });
+
+  } catch (error) {
+    console.error('Download proxy error:', error.message);
+    if (!res.headersSent) {
+      res.status(500).json({ success: false, message: 'Unable to download the file. Please try again.' });
+    }
   }
 });
 

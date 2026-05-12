@@ -112,7 +112,8 @@ document.addEventListener('DOMContentLoaded', () => {
             resultTitle.textContent = data.title || 'Download ready';
             downloadActions.innerHTML = data.downloads.map((item) => {
                 const label = item.note ? `${item.quality} · ${item.ext.toUpperCase()} · ${item.note}` : `${item.quality} · ${item.ext.toUpperCase()}`;
-                return `<a class="download-option" href="${item.url}" target="_blank" rel="noopener noreferrer">${label}</a>`;
+                const downloadUrl = `/api/download/file/${item.id}?url=${encodeURIComponent(item.url)}&title=${encodeURIComponent(data.title || 'download')}&ext=${item.ext}`;
+                return `<a class="download-option" href="${downloadUrl}" target="_blank" rel="noopener noreferrer">${label}</a>`;
             }).join('');
             resultCard.classList.remove('hidden');
         };
