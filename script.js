@@ -88,26 +88,31 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Language Dropdown Toggle
-    const langSelector = document.querySelector('.lang-selector-container');
+    const langSelectors = document.querySelectorAll('.lang-selector-container');
     const langOptions = document.querySelectorAll('.lang-dropdown a');
     const currentLangCodeSpan = document.getElementById('current-lang-code');
+    const mobileLangCodeSpans = document.querySelectorAll('.current-lang-code');
     const footerLangTextSpan = document.getElementById('footer-lang-text');
 
-    if (langSelector) {
+    langSelectors.forEach(langSelector => {
         const langToggle = langSelector.querySelector('.lang-toggle');
         
+        if (!langToggle) return;
+
         langToggle.addEventListener('click', (e) => {
             e.stopPropagation();
             langSelector.classList.toggle('active');
         });
+    });
 
-        // Close when clicking outside
-        document.addEventListener('click', (e) => {
+    // Close when clicking outside any language selector
+    document.addEventListener('click', (e) => {
+        langSelectors.forEach(langSelector => {
             if (!langSelector.contains(e.target)) {
                 langSelector.classList.remove('active');
             }
         });
-    }
+    });
 
     // Translation Engine
     function setLanguage(lang) {
@@ -142,6 +147,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (opt.getAttribute('data-lang') === lang) {
                     opt.classList.add('active');
                     if (currentLangCodeSpan) currentLangCodeSpan.textContent = lang.toUpperCase();
+                    if (mobileLangCodeSpans.length) {
+                        mobileLangCodeSpans.forEach(span => span.textContent = lang.toUpperCase());
+                    }
                     if (footerLangTextSpan) footerLangTextSpan.textContent = opt.textContent;
                 } else {
                     opt.classList.remove('active');
@@ -212,6 +220,7 @@ document.addEventListener('DOMContentLoaded', () => {
         mobileMenuOverlay.classList.remove('active');
         mobileMenuOverlay.setAttribute('aria-hidden', 'true');
         document.body.style.overflow = '';
+        langSelectors.forEach(langSelector => langSelector.classList.remove('active'));
     }
 
     if (mobileMenuBtn) {
