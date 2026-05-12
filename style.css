@@ -807,45 +807,64 @@ body {
 }
 
 @media (max-width: 768px) {
-    .nav-links {
-        display: none;
-    }
-
-    .nav-brand span {
-        display: none;
+    .navbar {
+        padding: 1rem 4%;
+        min-height: 60px;
     }
 
     .nav-brand {
-        gap: 0;
+        gap: 0.5rem;
     }
 
-    .status-indicator {
-        display: none;
+    .nav-brand span {
+        display: none !important;
     }
-    
+
+    .nav-brand .brand-icon {
+        width: 24px;
+        height: 24px;
+    }
+
+    .nav-links,
+    .status-indicator,
+    .lang-selector-container {
+        display: none !important;
+    }
+
     .mobile-menu-btn {
-        display: flex;
+        display: flex !important;
         align-items: center;
         justify-content: center;
-        width: 40px;
-        height: 40px;
+        width: 44px;
+        height: 44px;
         border-radius: 50%;
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        background: rgba(255, 255, 255, 0.04);
-        backdrop-filter: blur(18px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(20px);
+        color: var(--text-primary);
         transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), background 0.3s ease, border-color 0.3s ease;
     }
 
     .mobile-menu-btn:hover {
         transform: translateY(-1px);
         background: rgba(255, 255, 255, 0.08);
-        border-color: rgba(255, 255, 255, 0.12);
+        border-color: rgba(255, 255, 255, 0.16);
     }
 
     .mobile-menu-btn svg {
         width: 18px;
         height: 18px;
     }
+
+    .navbar > .nav-brand,
+    .navbar > .mobile-menu-btn {
+        z-index: 101;
+    }
+
+    .navbar {
+        justify-content: space-between;
+    }
+}
 
 
     .hero {
