@@ -1411,10 +1411,7 @@ body {
     }
 
     .mobile-lang-selector .lang-dropdown {
-        position: absolute;
-        top: calc(100% + 0.75rem);
-        left: 0;
-        right: 0;
+        position: static;
         width: 100%;
         padding: 0.5rem;
         border-radius: 20px;
@@ -1426,12 +1423,16 @@ body {
         transform: translateY(-6px);
         transition: opacity 0.25s ease, transform 0.25s ease, visibility 0.25s ease;
         z-index: 1002;
+        max-height: 0;
+        overflow: hidden;
     }
 
     .mobile-lang-selector.active .lang-dropdown {
         opacity: 1;
         visibility: visible;
         transform: translateY(0);
+        max-height: 420px;
+        overflow: auto;
     }
 
     .mobile-lang-selector .lang-dropdown a {
@@ -1447,5 +1448,74 @@ body {
     .mobile-lang-selector .lang-dropdown a.active {
         background: rgba(255, 255, 255, 0.08);
         color: var(--text-primary);
+    }
+}
+
+@media (max-width: 600px) and (orientation: portrait) {
+    .navbar {
+        padding: 0.9rem 1rem;
+        min-height: 58px;
+    }
+
+    .mobile-menu-overlay {
+        align-items: flex-start;
+        justify-content: center;
+        padding: 1rem;
+        background: rgba(0, 0, 0, 0.96);
+        will-change: opacity;
+    }
+
+    .mobile-menu-panel {
+        width: 100%;
+        max-width: 100%;
+        border-radius: 24px;
+        padding: 1.5rem 1.25rem;
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        backdrop-filter: blur(12px);
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+        max-height: calc(100vh - 2rem);
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        will-change: transform, opacity;
+    }
+
+    .mobile-menu-panel {
+        scroll-behavior: smooth;
+    }
+
+    .mobile-menu-close {
+        width: 38px;
+        height: 38px;
+    }
+
+    .mobile-menu-list a {
+        font-size: 1rem;
+        padding: 0.95rem 1rem;
+    }
+
+    .mobile-menu-group {
+        gap: 0.75rem;
+        padding-top: 1.2rem;
+        margin-top: 0.9rem;
+    }
+
+    .mobile-lang-selector .lang-dropdown {
+        max-height: 320px;
+    }
+
+    .mobile-lang-selector .lang-dropdown a {
+        padding: 0.9rem 0.95rem;
+    }
+
+    .mobile-menu-btn {
+        width: 42px;
+        height: 42px;
+        border-color: rgba(255, 255, 255, 0.14);
+    }
+
+    .mobile-menu-btn svg {
+        width: 16px;
+        height: 16px;
     }
 }
