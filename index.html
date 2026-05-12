@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Premium Social Media Downloader</title>
+    <meta name="description" content="Fast, elegant and modern downloader experience for public content.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    
+    <div class="ambient-lighting"></div>
+
+    <nav class="navbar reveal-fast">
+        <div class="nav-brand">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="brand-icon"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            <span data-i18n="brand_name">Downloader</span>
+        </div>
+        <div class="nav-links">
+            <a href="#features" data-i18n="nav_features">Features</a>
+            <a href="#how-it-works" data-i18n="nav_how_it_works">How it Works</a>
+            <a href="#faq" data-i18n="nav_faq">FAQ</a>
+            
+            <div class="lang-selector-container">
+                <button class="lang-toggle" aria-label="Select Language">
+                    <span id="current-lang-code">EN</span>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="chevron"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </button>
+                <div class="lang-dropdown glass">
+                    <a href="#" data-lang="en" class="active">English</a>
+                    <a href="#" data-lang="ml">Malayalam</a>
+                    <a href="#" data-lang="hi">Hindi</a>
+                    <a href="#" data-lang="ta">Tamil</a>
+                    <a href="#" data-lang="ar">Arabic</a>
+                    <a href="#" data-lang="es">Spanish</a>
+                    <a href="#" data-lang="fr">French</a>
+                    <a href="#" data-lang="de">German</a>
+                    <a href="#" data-lang="pt">Portuguese</a>
+                    <a href="#" data-lang="ru">Russian</a>
+                    <a href="#" data-lang="ja">Japanese</a>
+                    <a href="#" data-lang="ko">Korean</a>
+                    <a href="#" data-lang="zh">Chinese</a>
+                    <a href="#" data-lang="tr">Turkish</a>
+                    <a href="#" data-lang="id">Indonesian</a>
+                    <a href="#" data-lang="it">Italian</a>
+                </div>
+            </div>
+
+            <div class="status-indicator">
+                <div class="status-dot"></div>
+                <span>Online</span>
+            </div>
+        </div>
+        <button class="mobile-menu-btn" aria-label="Menu">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+        </button>
+    </nav>
+
+    <main>
+        <section class="hero">
+            <div class="hero-content">
+                <h1 class="hero-title reveal" data-i18n="hero_title">Fast Downloads,<br>Simplified.</h1>
+                <p class="hero-subtitle reveal" style="--delay: 0.1s" data-i18n="hero_subtitle">The fastest, most elegant way to save high-fidelity media from your favorite social platforms.</p>
+                
+                <form class="download-form reveal" style="--delay: 0.2s" id="downloadForm">
+                    <div class="input-wrapper glass">
+                        <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                        <input type="url" placeholder="Paste your video or photo link..." required id="urlInput" autocomplete="off" data-i18n="hero_input_placeholder" data-i18n-target="placeholder">
+                        <button type="submit" class="btn-submit" id="submitBtn">
+                            <span data-i18n="hero_btn_download">Download</span>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="submit-icon"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <section class="trusted-by">
+            <div class="stats-grid">
+                <div class="stat-item reveal" style="--delay: 0.1s">
+                    <h4>10M+</h4>
+                    <p data-i18n="stat_downloads">Downloads</p>
+                </div>
+                <div class="stat-item reveal" style="--delay: 0.2s">
+                    <h4>&lt;1s</h4>
+                    <p data-i18n="stat_processing">Processing</p>
+                </div>
+                <div class="stat-item reveal" style="--delay: 0.3s">
+                    <h4>20+</h4>
+                    <p data-i18n="stat_regions">Regions</p>
+                </div>
+                <div class="stat-item reveal" style="--delay: 0.4s">
+                    <h4>99.9%</h4>
+                    <p data-i18n="stat_uptime">Uptime</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="about section-padding">
+            <div class="about-container">
+                <h2 class="section-title reveal" style="--delay: 0.1s" data-i18n="about_title">Built for Modern Speed.</h2>
+                <p class="section-subtitle reveal" style="--delay: 0.2s" data-i18n="about_subtitle">We engineered a simple, secure, and blazing-fast infrastructure to deliver your media instantly without compromising your privacy or data.</p>
+            </div>
+        </section>
+
+        <section id="how-it-works" class="how-it-works section-padding">
+            <h2 class="section-title text-center reveal" style="--delay: 0.1s" data-i18n="how_title">How It Works</h2>
+            <div class="steps-grid">
+                <div class="step-card glass reveal" style="--delay: 0.2s">
+                    <div class="step-number">1</div>
+                    <h3 data-i18n="how_step1_title">Paste Link</h3>
+                    <p data-i18n="how_step1_desc">Copy the link from your favorite social platform and paste it into our input field.</p>
+                </div>
+                <div class="step-card glass reveal" style="--delay: 0.3s">
+                    <div class="step-number">2</div>
+                    <h3 data-i18n="how_step2_title">Process</h3>
+                    <p data-i18n="how_step2_desc">Our global servers instantly process your link and extract the highest quality media.</p>
+                </div>
+                <div class="step-card glass reveal" style="--delay: 0.4s">
+                    <div class="step-number">3</div>
+                    <h3 data-i18n="how_step3_title">Download</h3>
+                    <p data-i18n="how_step3_desc">Save your content directly to your device securely and without any tracking.</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="features" class="features section-padding">
+            <div class="feature-grid">
+                <div class="feature-card glass reveal" style="--delay: 0.1s">
+                    <div class="feature-icon-wrapper">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                    </div>
+                    <div>
+                        <h3 data-i18n="feat_fast_title">Lightning fast</h3>
+                        <p data-i18n="feat_fast_desc">Optimized server architecture for immediate download delivery.</p>
+                    </div>
+                </div>
+                <div class="feature-card glass reveal" style="--delay: 0.2s">
+                    <div class="feature-icon-wrapper">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                    </div>
+                    <div>
+                        <h3 data-i18n="feat_hq_title">High fidelity</h3>
+                        <p data-i18n="feat_hq_desc">Preserves the original quality of videos up to 4K resolution.</p>
+                    </div>
+                </div>
+                <div class="feature-card glass reveal" style="--delay: 0.3s">
+                    <div class="feature-icon-wrapper">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                    </div>
+                    <div>
+                        <h3 data-i18n="feat_priv_title">Privacy first</h3>
+                        <p data-i18n="feat_priv_desc">Zero tracking. Your downloads remain completely anonymous.</p>
+                    </div>
+                </div>
+                <div class="feature-card glass reveal" style="--delay: 0.4s">
+                    <div class="feature-icon-wrapper">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+                    </div>
+                    <div>
+                        <h3 data-i18n="feat_univ_title">Universal Support</h3>
+                        <p data-i18n="feat_univ_desc">Download content from multiple supported social platforms seamlessly.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="supported-platforms section-padding">
+            <h2 class="section-title text-center reveal" style="--delay: 0.1s" data-i18n="plat_title">Supported Platforms</h2>
+            <p class="section-subtitle text-center reveal" style="--delay: 0.2s" data-i18n="plat_subtitle">Download from the world's most popular networks.</p>
+            <div class="platforms-grid">
+                <div class="platform-container glass reveal" style="--delay: 0.3s">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
+                    <span>Instagram</span>
+                </div>
+                <div class="platform-container glass reveal" style="--delay: 0.4s">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path></svg>
+                    <span>Facebook</span>
+                </div>
+                <div class="platform-container glass reveal" style="--delay: 0.5s">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4l11.733 16h4.267l-11.733 -16z"/><path d="M4 20l6.768 -6.768m2.46 -2.46l6.772 -6.772"/></svg>
+                    <span>X (Twitter)</span>
+                </div>
+                <div class="platform-container glass reveal" style="--delay: 0.6s">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33 2.78 2.78 0 0 0 1.94 2c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.33 29 29 0 0 0-.46-5.33z"></path><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"></polygon></svg>
+                    <span>YouTube</span>
+                </div>
+            </div>
+        </section>
+
+        <section class="global-languages section-padding">
+            <h2 class="section-title text-center reveal" style="--delay: 0.1s" data-i18n="lang_title">Global Language Support</h2>
+            <div class="languages-grid reveal" style="--delay: 0.2s">
+                <span class="lang-tag glass">English</span>
+                <span class="lang-tag glass">Malayalam</span>
+                <span class="lang-tag glass">Hindi</span>
+                <span class="lang-tag glass">Tamil</span>
+                <span class="lang-tag glass">Arabic</span>
+                <span class="lang-tag glass">Spanish</span>
+                <span class="lang-tag glass">French</span>
+                <span class="lang-tag glass">German</span>
+                <span class="lang-tag glass">Portuguese</span>
+                <span class="lang-tag glass">Russian</span>
+                <span class="lang-tag glass">Japanese</span>
+                <span class="lang-tag glass">Korean</span>
+                <span class="lang-tag glass">Chinese</span>
+                <span class="lang-tag glass">Turkish</span>
+                <span class="lang-tag glass">Indonesian</span>
+                <span class="lang-tag glass">Italian</span>
+            </div>
+        </section>
+
+        <section id="faq" class="faq section-padding">
+            <h2 class="section-title text-center reveal" style="--delay: 0.1s" data-i18n="faq_title">Frequently Asked Questions</h2>
+            <div class="faq-list">
+                <div class="faq-item glass reveal" style="--delay: 0.2s">
+                    <div class="faq-question">
+                        <span data-i18n="faq1_q">Is the service free?</span>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    </div>
+                    <div class="faq-answer">
+                        <p data-i18n="faq1_a">Yes, our basic download service is completely free to use. We offer premium features for users who need batch downloading and maximum speeds.</p>
+                    </div>
+                </div>
+                <div class="faq-item glass reveal" style="--delay: 0.3s">
+                    <div class="faq-question">
+                        <span data-i18n="faq2_q">Is downloading secure?</span>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    </div>
+                    <div class="faq-answer">
+                        <p data-i18n="faq2_a">Absolutely. We use end-to-end encryption for our connections and do not store or track any of your downloaded content.</p>
+                    </div>
+                </div>
+                <div class="faq-item glass reveal" style="--delay: 0.4s">
+                    <div class="faq-question">
+                        <span data-i18n="faq3_q">Which platforms are supported?</span>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    </div>
+                    <div class="faq-answer">
+                        <p data-i18n="faq3_a">Currently, we support high-quality downloads from Instagram, Facebook, X (formerly Twitter), and YouTube.</p>
+                    </div>
+                </div>
+                <div class="faq-item glass reveal" style="--delay: 0.5s">
+                    <div class="faq-question">
+                        <span data-i18n="faq4_q">Is HD quality available?</span>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    </div>
+                    <div class="faq-answer">
+                        <p data-i18n="faq4_a">Yes, we always extract the highest available quality from the source link, up to 4K resolution where applicable.</p>
+                    </div>
+                </div>
+                <div class="faq-item glass reveal" style="--delay: 0.6s">
+                    <div class="faq-question">
+                        <span data-i18n="faq5_q">Do I need an account?</span>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    </div>
+                    <div class="faq-answer">
+                        <p data-i18n="faq5_a">No account is required to start downloading. You can use our tool instantly without signing up.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="cta section-padding">
+            <div class="cta-card glass reveal" style="--delay: 0.1s">
+                <h2 data-i18n="cta_title">Start downloading instantly.</h2>
+                <p data-i18n="cta_desc">Join millions of users downloading high-quality content globally.</p>
+                <button class="btn-primary" onclick="window.scrollTo({top: 0, behavior: 'smooth'})" data-i18n="cta_btn">Try it now</button>
+            </div>
+        </section>
+    </main>
+
+    <div class="footer-divider"></div>
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-brand reveal" style="--delay: 0.1s">
+                <div class="brand-logo">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                    <span data-i18n="brand_name">Downloader</span>
+                </div>
+                <p data-i18n="foot_desc">Premium social media downloading tool.</p>
+            </div>
+            
+            <div class="footer-links-group reveal" style="--delay: 0.2s">
+                <h4 data-i18n="foot_legal">Legal</h4>
+                <a href="#" data-i18n="foot_privacy">Privacy Policy</a>
+                <a href="#" data-i18n="foot_terms">Terms of Service</a>
+                <a href="#" data-i18n="foot_cookie">Cookie Policy</a>
+            </div>
+
+            <div class="footer-links-group reveal" style="--delay: 0.3s">
+                <h4 data-i18n="foot_support">Support</h4>
+                <a href="#" data-i18n="foot_contact">Contact Us</a>
+                <a href="#" data-i18n="foot_help">Help Center</a>
+                <a href="#" data-i18n="foot_api">API Documentation</a>
+            </div>
+
+            <div class="footer-links-group reveal" style="--delay: 0.4s">
+                <h4 data-i18n="foot_plat">Platforms</h4>
+                <a href="#">Instagram</a>
+                <a href="#">Facebook</a>
+                <a href="#">X (Twitter)</a>
+                <a href="#">YouTube</a>
+            </div>
+        </div>
+        
+        <div class="footer-bottom reveal" style="--delay: 0.5s">
+            <p data-i18n="foot_copy">&copy; 2026 Downloader Inc. All rights reserved.</p>
+            <div class="footer-lang-selector">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1 4-10z"></path></svg>
+                <span id="footer-lang-text">English</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Privacy Policy Modal -->
+    <div id="privacyModal" class="modal-overlay">
+        <div class="modal-container glass">
+            <div class="modal-header">
+                <h2>Privacy Policy</h2>
+                <button class="modal-close" aria-label="Close modal">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-content">
+                <section class="privacy-section">
+                    <h3>User Privacy</h3>
+                    <p>We are committed to protecting your privacy and ensuring that your personal information remains secure. Our service operates on a zero-tracking policy, meaning we do not collect, store, or share any personal data from our users.</p>
+                    <ul>
+                        <li>No account registration required</li>
+                        <li>No tracking of download activities</li>
+                        <li>No storage of user-provided URLs</li>
+                        <li>No collection of device information</li>
+                    </ul>
+                </section>
+                
+                <section class="privacy-section">
+                    <h3>Data Protection</h3>
+                    <p>Your data protection is our highest priority. We implement industry-standard security measures to ensure that any temporary data processing during downloads is handled securely and immediately discarded.</p>
+                    <ul>
+                        <li>End-to-end encryption for all connections</li>
+                        <li>Automatic cleanup of temporary files</li>
+                        <li>No data retention policies</li>
+                        <li>Secure server infrastructure</li>
+                    </ul>
+                </section>
+                
+                <section class="privacy-section">
+                    <h3>Security</h3>
+                    <p>We maintain robust security practices to protect against unauthorized access and ensure the integrity of our service. Our infrastructure is designed with security-first principles.</p>
+                    <ul>
+                        <li>Regular security audits and updates</li>
+                        <li>DDoS protection and monitoring</li>
+                        <li>Encrypted data transmission</li>
+                        <li>Compliance with data protection standards</li>
+                    </ul>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <!-- Terms of Service Modal -->
+    <div id="termsModal" class="modal-overlay">
+        <div class="modal-container glass">
+            <div class="modal-header">
+                <h2>Terms of Service</h2>
+                <button class="modal-close" aria-label="Close modal">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-content">
+                <section class="terms-section">
+                    <h3>Public Content Only</h3>
+                    <p>Our service is designed exclusively for downloading publicly available content. We strictly prohibit the use of our platform for accessing or downloading private, protected, or copyrighted material without proper authorization.</p>
+                    <ul>
+                        <li>Only public posts and media are supported</li>
+                        <li>Private accounts and content are not accessible</li>
+                        <li>Respect platform privacy settings and permissions</li>
+                        <li>No circumvention of content restrictions</li>
+                    </ul>
+                </section>
+                
+                <section class="terms-section">
+                    <h3>Responsible Usage</h3>
+                    <p>Users are expected to use our service responsibly and ethically. This includes respecting intellectual property rights, platform terms of service, and applicable laws in your jurisdiction.</p>
+                    <ul>
+                        <li>Comply with all applicable copyright laws</li>
+                        <li>Respect content creator rights and permissions</li>
+                        <li>Use downloaded content for personal purposes only</li>
+                        <li>Do not redistribute or commercially exploit content</li>
+                    </ul>
+                </section>
+                
+                <section class="terms-section">
+                    <h3>Platform Limitations</h3>
+                    <p>Our service operates within the technical and policy limitations of supported social media platforms. We cannot guarantee access to all content or bypass platform restrictions.</p>
+                    <ul>
+                        <li>Content availability depends on platform policies</li>
+                        <li>Some media types may not be supported</li>
+                        <li>Quality and format limitations may apply</li>
+                        <li>Platform rate limits and restrictions apply</li>
+                    </ul>
+                </section>
+                
+                <section class="terms-section">
+                    <h3>User Responsibilities</h3>
+                    <p>By using our service, you agree to take full responsibility for your actions and ensure compliance with all relevant laws, regulations, and platform terms.</p>
+                    <ul>
+                        <li>Verify content ownership and permissions</li>
+                        <li>Report any misuse or policy violations</li>
+                        <li>Maintain accurate and lawful usage</li>
+                        <li>Accept responsibility for downloaded content</li>
+                    </ul>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cookie Policy Modal -->
+    <div id="cookieModal" class="modal-overlay">
+        <div class="modal-container glass">
+            <div class="modal-header">
+                <h2>Cookie Policy</h2>
+                <button class="modal-close" aria-label="Close modal">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-content">
+                <section class="cookie-section">
+                    <h3>What Are Cookies</h3>
+                    <p>Cookies are small text files that are stored on your device when you visit our website. They help us provide you with a better browsing experience by remembering your preferences and understanding how you use our service.</p>
+                </section>
+                
+                <section class="cookie-section">
+                    <h3>How We Use Cookies</h3>
+                    <p>We use cookies for essential functionality and to improve your experience with our service. Our approach is minimal and privacy-focused.</p>
+                    <div class="cookie-types">
+                        <div class="cookie-type">
+                            <h4>Essential Cookies</h4>
+                            <p>Required for basic website functionality, including language preferences and secure access to our services.</p>
+                        </div>
+                        <div class="cookie-type">
+                            <h4>Analytics Cookies</h4>
+                            <p>Help us understand how visitors interact with our website to improve performance and user experience.</p>
+                        </div>
+                        <div class="cookie-type">
+                            <h4>Functional Cookies</h4>
+                            <p>Remember your preferences and settings to provide a personalized experience.</p>
+                        </div>
+                    </div>
+                </section>
+                
+                <section class="cookie-section">
+                    <h3>Your Cookie Choices</h3>
+                    <p>You have control over cookie usage on our website. You can manage your cookie preferences through your browser settings.</p>
+                    <ul>
+                        <li>Most browsers allow you to control cookies through their settings</li>
+                        <li>You can delete all cookies that are already on your device</li>
+                        <li>You can set most browsers to prevent cookies from being placed</li>
+                        <li>Note that disabling cookies may affect website functionality</li>
+                    </ul>
+                </section>
+                
+                <section class="cookie-section">
+                    <h3>Third-Party Cookies</h3>
+                    <p>We may use third-party services that set their own cookies. These services help us analyze website traffic and improve our services.</p>
+                    <ul>
+                        <li>Google Analytics (anonymized usage statistics)</li>
+                        <li>Font delivery services (Google Fonts)</li>
+                        <li>All third-party cookies are used for service improvement only</li>
+                    </ul>
+                </section>
+                
+                <section class="cookie-section">
+                    <h3>Cookie Retention</h3>
+                    <p>We keep cookies for different periods depending on their purpose:</p>
+                    <ul>
+                        <li>Session cookies: Deleted when you close your browser</li>
+                        <li>Essential cookies: Up to 1 year for functionality</li>
+                        <li>Analytics cookies: Up to 2 years for performance tracking</li>
+                        <li>Preference cookies: Up to 1 year for user experience</li>
+                    </ul>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <script src="translations.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
