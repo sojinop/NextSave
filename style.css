@@ -1346,7 +1346,7 @@ body {
         display: flex;
         align-items: center;
         justify-content: center;
-        transition: all 0.2s ease;
+        transition: background 0.2s ease, color 0.2s ease;
     }
 
     .mobile-menu-close:hover {
@@ -1462,6 +1462,8 @@ body {
         padding: 1rem;
         background: rgba(0, 0, 0, 0.96);
         will-change: opacity;
+        transform: translateZ(0);
+        backface-visibility: hidden;
     }
 
     .mobile-menu-panel {
@@ -1471,16 +1473,16 @@ body {
         padding: 1.5rem 1.25rem;
         background: rgba(255, 255, 255, 0.02);
         border: 1px solid rgba(255, 255, 255, 0.08);
-        backdrop-filter: blur(12px);
-        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+        backdrop-filter: blur(10px);
+        box-shadow: 0 16px 40px rgba(0, 0, 0, 0.30);
         max-height: calc(100vh - 2rem);
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
-        will-change: transform, opacity;
-    }
-
-    .mobile-menu-panel {
         scroll-behavior: smooth;
+        will-change: transform, opacity;
+        transform: translateZ(0);
+        backface-visibility: hidden;
+        overscroll-behavior: contain;
     }
 
     .mobile-menu-close {
@@ -1516,5 +1518,22 @@ body {
     .mobile-menu-btn svg {
         width: 16px;
         height: 16px;
+    }
+
+    .mobile-menu-close,
+    .mobile-menu-btn,
+    .mobile-menu-list a,
+    .mobile-lang-selector .lang-toggle {
+        backface-visibility: hidden;
+        transform: translateZ(0);
+        touch-action: manipulation;
+    }
+
+    .mobile-lang-selector .lang-dropdown {
+        box-shadow: 0 14px 30px rgba(0, 0, 0, 0.28);
+        will-change: opacity, transform;
+        transform: translateZ(0);
+        backface-visibility: hidden;
+        -webkit-overflow-scrolling: touch;
     }
 }
