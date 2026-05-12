@@ -1248,3 +1248,34 @@ body {
         font-size: 0.9rem;
     }
 }
+}
+ 
+/* PASTE HERE ↓↓↓ */
+
+@media (max-width: 768px) {
+
+  .logo span {
+    display: none !important;
+  }
+
+  .menu-toggle {
+    width: 48px !important;
+    height: 48px !important;
+    border-radius: 50% !important;
+    background: rgba(255,255,255,0.04) !important;
+    border: 1px solid rgba(255,255,255,0.08) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  .menu-toggle svg,
+  .menu-toggle i {
+    transform: scale(0.8);
+  }
+
+  .navbar {
+    padding: 1rem 1.2rem !important;
+  }
+
+}
