@@ -194,6 +194,52 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }, 50);
 
+    // Mobile menu toggle
+    const mobileMenuBtn = document.querySelector('.mobile-menu-btn');
+    const mobileMenuOverlay = document.getElementById('mobileMenuOverlay');
+    const mobileMenuClose = document.querySelector('.mobile-menu-close');
+    const mobileMenuLinks = document.querySelectorAll('.mobile-menu-list a');
+
+    function openMobileMenu() {
+        if (!mobileMenuOverlay) return;
+        mobileMenuOverlay.classList.add('active');
+        mobileMenuOverlay.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeMobileMenu() {
+        if (!mobileMenuOverlay) return;
+        mobileMenuOverlay.classList.remove('active');
+        mobileMenuOverlay.setAttribute('aria-hidden', 'true');
+        document.body.style.overflow = '';
+    }
+
+    if (mobileMenuBtn) {
+        mobileMenuBtn.addEventListener('click', openMobileMenu);
+    }
+
+    if (mobileMenuClose) {
+        mobileMenuClose.addEventListener('click', closeMobileMenu);
+    }
+
+    if (mobileMenuOverlay) {
+        mobileMenuOverlay.addEventListener('click', (e) => {
+            if (e.target === mobileMenuOverlay) {
+                closeMobileMenu();
+            }
+        });
+    }
+
+    mobileMenuLinks.forEach(link => {
+        link.addEventListener('click', closeMobileMenu);
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            closeMobileMenu();
+        }
+    });
+
     // Privacy Policy Modal Functionality
     const privacyModal = document.getElementById('privacyModal');
     const privacyLink = document.querySelector('a[data-i18n="foot_privacy"]');
