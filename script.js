@@ -31,46 +31,126 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let currentLang = 'en';
 
-    // Form submission animation
+    // Form submission and download preview
     const form = document.getElementById('downloadForm');
-    if(form) {
+    if (form) {
         const input = document.getElementById('urlInput');
         const btn = form.querySelector('.btn-submit');
+        const resultCard = document.getElementById('downloadResult');
+        const resultThumbnail = document.getElementById('resultThumbnail');
+        const resultPlatform = document.getElementById('resultPlatform');
+        const resultTitle = document.getElementById('resultTitle');
+        const downloadActions = document.getElementById('downloadActions');
+        const errorBox = document.getElementById('downloadError');
+        const originalBtnHTML = btn.innerHTML;
 
-        form.addEventListener('submit', (e) => {
+        const processText = typeof translations !== 'undefined' && translations[currentLang]?.process_text ? translations[currentLang].process_text : 'Processing...';
+        const readyText = typeof translations !== 'undefined' && translations[currentLang]?.ready_text ? translations[currentLang].ready_text : 'Ready';
+
+        const spinnerHTML = `<svg class="spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg> <span>${processText}</span>`;
+
+        if (!document.getElementById('spinner-style')) {
+            const style = document.createElement('style');
+            style.id = 'spinner-style';
+            style.innerHTML = `
+                @keyframes spin { 100% { transform: rotate(360deg); } }
+                .spinner { animation: spin 1s linear infinite; width: 16px; height: 16px; }
+            `;
+            document.head.appendChild(style);
+        }
+
+        const setLoading = (loading) => {
+            if (loading) {
+                btn.disabled = true;
+                btn.classList.add('loading');
+                btn.innerHTML = spinnerHTML;
+                btn.style.cursor = 'progress';
+            } else {
+                btn.disabled = false;
+                btn.classList.remove('loading');
+                btn.innerHTML = originalBtnHTML;
+                btn.style.cursor = '';
+            }
+        };
+
+        const isValidInputUrl = (value) => {
+            try {
+                const url = new URL(value.trim());
+                return /youtube|youtu\.be|instagram|facebook|x\.com|twitter|t\.co/i.test(url.hostname);
+            } catch {
+                return false;
+            }
+        };
+
+        const hideError = () => {
+            if (errorBox) {
+                errorBox.classList.add('hidden');
+                errorBox.textContent = '';
+            }
+        };
+
+        const showError = (message) => {
+            hideResult();
+            if (!errorBox) return;
+            errorBox.textContent = message;
+            errorBox.classList.remove('hidden');
+        };
+
+        const hideResult = () => {
+            if (resultCard) {
+                resultCard.classList.add('hidden');
+            }
+        };
+
+        const renderResult = (data) => {
+            if (!resultCard) return;
+
+            hideError();
+            resultThumbnail.src = data.thumbnail || '';
+            resultThumbnail.alt = data.title || 'Media preview';
+            resultPlatform.textContent = data.platform || '';
+            resultTitle.textContent = data.title || 'Download ready';
+            downloadActions.innerHTML = data.downloads.map((item) => {
+                const label = item.note ? `${item.quality} · ${item.ext.toUpperCase()} · ${item.note}` : `${item.quality} · ${item.ext.toUpperCase()}`;
+                return `<a class="download-option" href="${item.url}" target="_blank" rel="noopener noreferrer">${label}</a>`;
+            }).join('');
+            resultCard.classList.remove('hidden');
+        };
+
+        form.addEventListener('submit', async (e) => {
             e.preventDefault();
-            if (!input.value) return;
-
-            const originalContent = btn.innerHTML;
-            const processText = typeof translations !== 'undefined' && translations[currentLang]?.process_text ? translations[currentLang].process_text : "Processing...";
-            const readyText = typeof translations !== 'undefined' && translations[currentLang]?.ready_text ? translations[currentLang].ready_text : "Ready";
-            
-            btn.innerHTML = `<svg class="spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg> <span>${processText}</span>`;
-            
-            if (!document.getElementById('spinner-style')) {
-                const style = document.createElement('style');
-                style.id = 'spinner-style';
-                style.innerHTML = `
-                    @keyframes spin { 100% { transform: rotate(360deg); } }
-                    .spinner { animation: spin 1s linear infinite; width: 16px; height: 16px; }
-                `;
-                document.head.appendChild(style);
+            const url = input.value.trim();
+            if (!url) return;
+            if (!isValidInputUrl(url)) {
+                showError('Please enter a valid supported link from YouTube, Instagram, Facebook, or X/Twitter.');
+                return;
             }
 
-            setTimeout(() => {
-                btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> <span>${readyText}</span>`;
-                btn.style.background = '#1a1a1a';
-                btn.style.color = '#ffffff';
-                btn.style.boxShadow = 'inset 0 0 0 1px rgba(255,255,255,0.1)';
-                
-                setTimeout(() => {
-                    btn.innerHTML = originalContent;
-                    btn.style.background = '';
-                    btn.style.color = '';
-                    btn.style.boxShadow = '';
-                    input.value = '';
-                }, 2500);
-            }, 1500);
+            setLoading(true);
+            hideError();
+            hideResult();
+
+            try {
+                const response = await fetch('/api/download', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ url })
+                });
+
+                const result = await response.json();
+                if (!response.ok || !result.success) {
+                    throw new Error(result.message || 'Unable to process the link.');
+                }
+
+                renderResult(result);
+                input.value = '';
+            } catch (error) {
+                showError(error.message || 'Server error. Please try again later.');
+            } finally {
+                setLoading(false);
+            }
         });
     }
 
