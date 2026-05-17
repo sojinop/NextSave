@@ -471,9 +471,14 @@ body {
     gap: 1rem;
 }
 
-.result-platform {
-    display: inline-flex;
+.result-badges {
+    display: flex;
+    gap: 0.5rem;
     align-self: flex-start;
+}
+
+.result-platform, .result-type {
+    display: inline-flex;
     padding: 0.45rem 0.9rem;
     border-radius: 999px;
     background: rgba(255, 255, 255, 0.08);
@@ -481,6 +486,11 @@ body {
     font-size: 0.78rem;
     text-transform: uppercase;
     letter-spacing: 0.14em;
+}
+
+.result-type {
+    background: rgba(255, 255, 255, 0.12);
+    color: var(--text-primary);
 }
 
 .result-title {

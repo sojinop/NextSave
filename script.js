@@ -39,6 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const resultCard = document.getElementById('downloadResult');
         const resultThumbnail = document.getElementById('resultThumbnail');
         const resultPlatform = document.getElementById('resultPlatform');
+        const resultMediaType = document.getElementById('resultMediaType');
         const resultTitle = document.getElementById('resultTitle');
         const downloadActions = document.getElementById('downloadActions');
         const errorBox = document.getElementById('downloadError');
@@ -106,9 +107,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!resultCard) return;
 
             hideError();
-            resultThumbnail.src = data.thumbnail || '';
+            const previewUrl = data.thumbnail && /\.(jpe?g|png|webp|gif|svg)(\?.*)?$/i.test(data.thumbnail) ? data.thumbnail : '';
+            resultThumbnail.src = previewUrl;
             resultThumbnail.alt = data.title || 'Media preview';
-            resultPlatform.textContent = data.platform || '';
+            resultThumbnail.style.display = previewUrl ? '' : 'none';
+            resultPlatform.textContent = data.platform || 'Instagram';
+            if (resultMediaType) resultMediaType.textContent = data.mediaType || 'Media';
             resultTitle.textContent = data.title || 'Download ready';
             downloadActions.innerHTML = data.downloads.map((item) => {
                 const label = item.note ? `${item.quality} · ${item.ext.toUpperCase()} · ${item.note}` : `${item.quality} · ${item.ext.toUpperCase()}`;

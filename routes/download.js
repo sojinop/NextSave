@@ -1,14 +1,19 @@
 const express = require('express');
 const axios = require('axios');
 const { detectPlatform, isSupportedUrl } = require('../utils/urlValidator');
-const { fetchMediaInfo } = require('../utils/yt-dlp');
+const { fetchMediaInfo, checkYtDlp } = require('../utils/yt-dlp');
+const { extractInstagramMedia } = require('../utils/instagramExtractor');
 
 const router = express.Router();
 
 router.post('/', async (req, res) => {
   const { url } = req.body;
+  const requestId = Math.random().toString(36).substring(7);
+
+  console.log(`[${requestId}] Processing download request for URL: ${url}`);
 
   if (!url || typeof url !== 'string') {
+    console.log(`[${requestId}] Invalid request payload`);
     return res.status(400).json({ success: false, message: 'Invalid request payload.' });
   }
 
@@ -16,10 +21,12 @@ router.post('/', async (req, res) => {
   try {
     parsedUrl = new URL(url.trim());
   } catch (error) {
+    console.log(`[${requestId}] Invalid URL format: ${error.message}`);
     return res.status(400).json({ success: false, message: 'Please provide a valid URL.' });
   }
 
   if (!isSupportedUrl(parsedUrl)) {
+    console.log(`[${requestId}] Unsupported URL: ${parsedUrl.hostname}`);
     return res.status(400).json({
       success: false,
       message: 'Unsupported URL. Supported platforms: YouTube, Instagram, Facebook, X/Twitter.'
@@ -27,17 +34,78 @@ router.post('/', async (req, res) => {
   }
 
   const platform = detectPlatform(parsedUrl);
+  console.log(`[${requestId}] Detected platform: ${platform}`);
 
   try {
-    const metadata = await fetchMediaInfo(parsedUrl.toString());
+    let metadata;
+    let isInstagram = platform === 'Instagram';
+
+    // Try Instagram extractor first for Instagram URLs
+    if (isInstagram) {
+      try {
+        console.log(`[${requestId}] Attempting Instagram extraction...`);
+        metadata = await extractInstagramMedia(parsedUrl.toString());
+        console.log(`[${requestId}] Instagram extraction successful`);
+      } catch (instagramError) {
+        console.log(`[${requestId}] Instagram extraction failed, falling back to yt-dlp: ${instagramError.message}`);
+        try {
+          metadata = await fetchMediaInfo(parsedUrl.toString());
+        } catch (ytdlpError) {
+          console.error(`[${requestId}] Both Instagram and yt-dlp extraction failed`);
+          throw new Error(`Failed to extract Instagram content: ${instagramError.message}`);
+        }
+      }
+    } else {
+      // Use yt-dlp for other platforms
+      try {
+        console.log(`[${requestId}] Attempting yt-dlp extraction...`);
+        metadata = await fetchMediaInfo(parsedUrl.toString());
+        console.log(`[${requestId}] yt-dlp extraction successful`);
+      } catch (ytdlpError) {
+        console.error(`[${requestId}] yt-dlp extraction failed: ${ytdlpError.message}`);
+        throw ytdlpError;
+      }
+    }
+
+    if (!metadata) {
+      throw new Error('No metadata returned from extractor');
+    }
+
+    console.log(`[${requestId}] Processing metadata...`);
     const video = Array.isArray(metadata.entries) ? metadata.entries[0] : metadata;
 
-    const title = video.title || 'Untitled';
-    const thumbnail = video.thumbnail || (video.thumbnails && video.thumbnails[0] && video.thumbnails[0].url) || null;
+    const title = decodeHtmlEntities(video.title || 'Untitled');
+    let thumbnail = video.thumbnail || (video.thumbnails && video.thumbnails[0] && video.thumbnails[0].url) || null;
 
-    const formats = Array.isArray(video.formats) ? video.formats : [];
+    let formats = Array.isArray(video.formats) ? video.formats : [];
+    console.log(`[${requestId}] Total formats from metadata: ${formats.length}`);
+
+    if (!thumbnail && formats.length) {
+      const imageFormat = formats.find((format) => /\.(jpe?g|png|webp|gif|svg)(\?.*)?$/i.test(format.url));
+      if (imageFormat) {
+        thumbnail = imageFormat.url;
+      }
+    }
+
+    // Filter out subtitle/caption formats and storyboards
+    formats = formats.filter(f => {
+      // Skip if no URL
+      if (!f.url) return false;
+      // Skip if DRM protected
+      if (f.drm) return false;
+      // Skip m3u8 streams
+      if (f.protocol?.startsWith('m3u8')) return false;
+      // Skip storyboard formats (these are MHTML storyboards)
+      if (f.ext === 'mhtml') return false;
+      // Skip subtitle/caption formats
+      if (['srt', 'vtt', 'json3', 'srv1', 'srv2', 'srv3', 'ttml'].includes(f.ext)) return false;
+      // Keep anything else (audio, video, or other downloadable formats)
+      return true;
+    });
+
+    console.log(`[${requestId}] Formats after filtering: ${formats.length}`);
+
     const downloads = formats
-      .filter((format) => format.url && !format.drm && !format.protocol?.startsWith('m3u8'))
       .map((format) => {
         const quality = format.height ? `${format.height}p` : format.abr ? `${format.abr}kbps` : format.format || 'best';
         const ext = format.ext || 'mp4';
@@ -62,22 +130,56 @@ router.post('/', async (req, res) => {
       })
       .slice(0, 8);
 
+    console.log(`[${requestId}] Final download options: ${downloads.length}`);
+    if (downloads.length > 0) {
+      console.log(`[${requestId}] Top format: ${downloads[0].quality} ${downloads[0].ext}`);
+    }
+
     if (!downloads.length) {
+      console.warn(`[${requestId}] No downloadable formats found`);
       return res.status(422).json({
         success: false,
         message: 'Unable to extract downloadable media for this URL. Please try a different link.'
       });
     }
 
+    let mediaType = 'Video';
+    const hasVideo = downloads.some((item) => ['mp4', 'webm', 'mov', 'mkv'].includes(item.ext));
+    const hasImage = downloads.some((item) => ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg'].includes(item.ext));
+    const hasAudio = downloads.some((item) => ['mp3', 'm4a', 'wav', 'ogg', 'aac'].includes(item.ext));
+
+    if (hasVideo) {
+      mediaType = 'Video';
+    } else if (hasAudio && !hasVideo) {
+      mediaType = 'Audio';
+    } else if (hasImage && !hasVideo) {
+      mediaType = 'Image';
+    } else {
+      const baseExt = (video.ext || '').toLowerCase();
+      if (['jpg', 'jpeg', 'png', 'webp', 'heic'].includes(baseExt)) {
+        mediaType = 'Image';
+      } else if (['mp3', 'm4a', 'wav', 'ogg'].includes(baseExt)) {
+        mediaType = 'Audio';
+      } else if (video.vcodec === 'none' && video.acodec !== 'none') {
+        mediaType = 'Audio';
+      } else if (video.vcodec === 'none' && video.acodec === 'none') {
+        mediaType = 'Image';
+      }
+    }
+
+    console.log(`[${requestId}] Response ready - Title: ${title}, Type: ${mediaType}, Formats: ${downloads.length}`);
+
     return res.json({
       success: true,
       platform,
       title,
       thumbnail,
+      mediaType,
       downloads
     });
   } catch (error) {
-    console.error('Download API error:', error.message || error);
+    console.error(`[${requestId}] Error: ${error.message || error}`);
+    console.error(`[${requestId}] Stack trace:`, error.stack);
     return res.status(500).json({
       success: false,
       message: 'Unable to process the link right now. Please try again later.'
@@ -85,23 +187,41 @@ router.post('/', async (req, res) => {
   }
 });
 
+function decodeHtmlEntities(text) {
+  if (!text || typeof text !== 'string') return text;
+  return text
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;|&apos;/g, "'")
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&nbsp;/g, ' ');
+}
+
 router.get('/file/:id', async (req, res) => {
   const { id } = req.params;
   const { url, title, ext } = req.query;
+  const requestId = Math.random().toString(36).substring(7);
+
+  console.log(`[${requestId}] Download file request - ID: ${id}, Ext: ${ext}`);
 
   if (!url || !title || !ext) {
+    console.log(`[${requestId}] Missing required parameters`);
     return res.status(400).json({ success: false, message: 'Missing required parameters.' });
   }
 
   try {
     // Decode the URL if it was encoded
     const decodedUrl = decodeURIComponent(url);
+    console.log(`[${requestId}] Starting download from: ${decodedUrl.substring(0, 100)}...`);
 
     // Set content type based on file extension
     const contentType = ext === 'mp4' ? 'video/mp4' :
                        ext === 'webm' ? 'video/webm' :
                        ext === 'mp3' ? 'audio/mpeg' :
                        ext === 'm4a' ? 'audio/mp4' :
+                       ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' :
+                       ext === 'png' ? 'image/png' :
                        'application/octet-stream';
 
     // Sanitize filename - remove special characters that could cause issues
@@ -130,22 +250,43 @@ router.get('/file/:id', async (req, res) => {
       }
     });
 
+    console.log(`[${requestId}] Stream started, file size: ${response.headers['content-length'] || 'unknown'}`);
+
     // Pipe the response stream to the client
     response.data.pipe(res);
 
     // Handle errors during streaming
     response.data.on('error', (error) => {
-      console.error('Stream error:', error);
+      console.error(`[${requestId}] Stream error:`, error);
       if (!res.headersSent) {
         res.status(500).json({ success: false, message: 'Download failed during streaming.' });
       }
     });
-
   } catch (error) {
-    console.error('Download proxy error:', error.message);
+    console.error(`[${requestId}] Download proxy error: ${error.message}`);
     if (!res.headersSent) {
       res.status(500).json({ success: false, message: 'Unable to download the file. Please try again.' });
     }
+  }
+});
+
+// Health check endpoint
+router.get('/health', async (req, res) => {
+  try {
+    const ytdlpAvailable = await checkYtDlp();
+    res.json({
+      success: true,
+      status: 'healthy',
+      ytdlp: ytdlpAvailable ? 'available' : 'unavailable',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Health check error:', error);
+    res.status(500).json({
+      success: false,
+      status: 'unhealthy',
+      error: error.message
+    });
   }
 });
 
