@@ -38,32 +38,55 @@ router.post('/', async (req, res) => {
 
   try {
     let metadata;
-    let isInstagram = platform === 'Instagram';
 
-    // Try Instagram extractor first for Instagram URLs
-    if (isInstagram) {
-      try {
-        console.log(`[${requestId}] Attempting Instagram extraction...`);
-        metadata = await extractInstagramMedia(parsedUrl.toString());
-        console.log(`[${requestId}] Instagram extraction successful`);
-      } catch (instagramError) {
-        console.log(`[${requestId}] Instagram extraction failed, falling back to yt-dlp: ${instagramError.message}`);
+    // Prefer yt-dlp (fetchMediaInfo) for all platforms including Instagram.
+    // This restores the previous stable behavior where yt-dlp is the primary extractor.
+    try {
+      console.log(`[${requestId}] Attempting yt-dlp extraction...`);
+      metadata = await fetchMediaInfo(parsedUrl.toString());
+      console.log(`[${requestId}] yt-dlp extraction successful`);
+    } catch (ytdlpError) {
+      console.log(`[${requestId}] yt-dlp extraction failed: ${ytdlpError.message}`);
+      // As a lightweight, production-safe fallback, try the Instagram-specific extractor only for Instagram URLs
+      if (platform === 'Instagram') {
         try {
-          metadata = await fetchMediaInfo(parsedUrl.toString());
-        } catch (ytdlpError) {
-          console.error(`[${requestId}] Both Instagram and yt-dlp extraction failed`);
-          throw new Error(`Failed to extract Instagram content: ${instagramError.message}`);
+          console.log(`[${requestId}] Falling back to Instagram extractor...`);
+          metadata = await extractInstagramMedia(parsedUrl.toString());
+          console.log(`[${requestId}] Instagram extractor succeeded as fallback`);
+        } catch (instagramError) {
+          console.error(`[${requestId}] Both yt-dlp and Instagram extractor failed`);
+          throw instagramError;
         }
-      }
-    } else {
-      // Use yt-dlp for other platforms
-      try {
-        console.log(`[${requestId}] Attempting yt-dlp extraction...`);
-        metadata = await fetchMediaInfo(parsedUrl.toString());
-        console.log(`[${requestId}] yt-dlp extraction successful`);
-      } catch (ytdlpError) {
-        console.error(`[${requestId}] yt-dlp extraction failed: ${ytdlpError.message}`);
+      } else {
         throw ytdlpError;
+      }
+    }
+
+    // If Instagram extractor returned only image thumbnail/formats and no video formats, try yt-dlp as fallback
+    if (platform === 'Instagram' && metadata) {
+      const metaFormats = Array.isArray(metadata.formats)
+        ? metadata.formats
+        : (Array.isArray(metadata.entries) && metadata.entries[0] && Array.isArray(metadata.entries[0].formats))
+          ? metadata.entries[0].formats
+          : [];
+
+      const hasVideoFormat = Array.isArray(metaFormats) && metaFormats.some(f => {
+        const ext = (f.ext || '').toLowerCase();
+        const fmt = (f.format || '').toLowerCase();
+        return ['mp4', 'webm', 'mov', 'mkv'].includes(ext) || fmt.includes('video');
+      });
+
+      if (!hasVideoFormat) {
+        try {
+          console.log(`[${requestId}] Instagram extractor returned no video formats, invoking yt-dlp fallback...`);
+          const ytdlpMeta = await fetchMediaInfo(parsedUrl.toString());
+          if (ytdlpMeta) {
+            metadata = ytdlpMeta;
+            console.log(`[${requestId}] yt-dlp fallback succeeded, formats: ${Array.isArray(metadata.formats) ? metadata.formats.length : (metadata.entries && metadata.entries[0] && metadata.entries[0].formats ? metadata.entries[0].formats.length : 0)}`);
+          }
+        } catch (e) {
+          console.log(`[${requestId}] yt-dlp fallback failed: ${e.message}`);
+        }
       }
     }
 
