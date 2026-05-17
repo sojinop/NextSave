@@ -151,12 +151,17 @@ router.post('/', async (req, res) => {
       return audioOnlyHint && ['mp3', 'm4a', 'ogg', 'wav', 'aac'].includes(ext);
     };
 
+    const hasAudioCodec = (format) => {
+      return (typeof format.acodec === 'undefined' || format.acodec !== 'none') && format.acodec;
+    };
+
     const mp4Candidates = formats
       .filter(isMergedMp4)
       .sort((a, b) => getFormatScore(b) - getFormatScore(a));
 
+    // For audio: prioritize audio-only, then fallback to formats with audio track
     const audioCandidates = formats
-      .filter((format) => isAudioOnly(format))
+      .filter((format) => isAudioOnly(format) || hasAudioCodec(format))
       .sort((a, b) => getFormatScore(b) - getFormatScore(a));
 
     const bestMp4 = mp4Candidates[0] || null;
@@ -181,7 +186,18 @@ router.post('/', async (req, res) => {
         srcExt: bestAudio.ext || '',
         filesize: typeof bestAudio.filesize === 'number' ? bestAudio.filesize : null,
         url: bestAudio.url,
-        note: bestAudio.format_note || bestAudio.format || 'Audio only'
+        note: bestAudio.format_note || bestAudio.format || 'Audio track'
+      });
+    } else if (bestMp4) {
+      // If no audio-only format found but best MP4 has audio, create MP3 from video
+      downloads.push({
+        id: `mp3_from_video_${bestMp4.format_id}`,
+        quality: 'Audio',
+        ext: 'mp3',
+        srcExt: 'mp4',
+        filesize: null,
+        url: bestMp4.url,
+        note: 'Audio extracted from video'
       });
     }
 
@@ -262,19 +278,29 @@ function isValidThumbnailUrl(url) {
 }
 
 function extractBestThumbnail(video) {
-  const candidates = [];
-  if (video.thumbnail) candidates.push(video.thumbnail);
+  // Priority 1: thumbnails array (most reliable)
   if (Array.isArray(video.thumbnails)) {
-    video.thumbnails.forEach((thumb) => {
-      if (thumb && thumb.url) candidates.push(thumb.url);
-    });
+    for (let thumb of video.thumbnails) {
+      if (thumb && thumb.url && isValidThumbnailUrl(thumb.url)) {
+        return thumb.url;
+      }
+    }
   }
-  if (video.display_url) candidates.push(video.display_url);
-  if (video.displayUrl) candidates.push(video.displayUrl);
-  if (video.thumbnail_url) candidates.push(video.thumbnail_url);
-  if (video.display_url === undefined && video.thumbnail === undefined && video.url && isImageUrl(video.url)) candidates.push(video.url);
-
-  return candidates.find(isValidThumbnailUrl) || null;
+  // Priority 2: display_url (Instagram-specific)
+  if (video.display_url && isValidThumbnailUrl(video.display_url)) {
+    return video.display_url;
+  }
+  if (video.displayUrl && isValidThumbnailUrl(video.displayUrl)) {
+    return video.displayUrl;
+  }
+  // Priority 3: thumbnail
+  if (video.thumbnail && isValidThumbnailUrl(video.thumbnail)) {
+    return video.thumbnail;
+  }
+  if (video.thumbnail_url && isValidThumbnailUrl(video.thumbnail_url)) {
+    return video.thumbnail_url;
+  }
+  return null;
 }
 
 router.get('/thumbnail', async (req, res) => {
