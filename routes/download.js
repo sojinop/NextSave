@@ -100,28 +100,40 @@ router.post('/', async (req, res) => {
     const video = Array.isArray(metadata.entries) ? metadata.entries[0] : metadata;
 
     const title = decodeHtmlEntities(video.title || 'Untitled');
-    let thumbnail = extractBestThumbnail(video);
-    
-    console.log(`[${requestId}] Thumbnail extraction result:`, thumbnail ? `${thumbnail.substring(0, 80)}...` : 'null');
+    logThumbnailFields(requestId, video);
+
+    let previewUrl = getBestThumbnailUrl(video);
+    if (!previewUrl && platform === 'Instagram') {
+      try {
+        previewUrl = await fetchInstagramOgImage(parsedUrl.toString());
+        if (previewUrl) {
+          console.log(`[${requestId}] Fallback og:image preview URL found: ${previewUrl}`);
+        }
+      } catch (ogError) {
+        console.log(`[${requestId}] og:image fallback failed: ${ogError.message}`);
+      }
+    }
+
+    if (previewUrl) {
+      previewUrl = normalizeThumbnailUrl(previewUrl);
+    }
+
+    console.log(`[${requestId}] Preview URL result:`, previewUrl || 'null');
 
     let formats = Array.isArray(video.formats) ? video.formats : [];
     console.log(`[${requestId}] Total formats from metadata: ${formats.length}`);
 
-    if (!thumbnail && formats.length) {
-      const audioOrImageFormat = formats.find((format) => format.thumbnail || format.url);
+    if (!previewUrl && formats.length) {
+      const audioOrImageFormat = formats.find((format) => format.thumbnail || isImageUrl(format.url));
       if (audioOrImageFormat) {
-        thumbnail = audioOrImageFormat.thumbnail || audioOrImageFormat.url;
-        console.log(`[${requestId}] Thumbnail fallback from formats: ${thumbnail.substring(0, 80)}...`);
+        previewUrl = normalizeThumbnailUrl(audioOrImageFormat.thumbnail || audioOrImageFormat.url);
+        if (previewUrl) {
+          console.log(`[${requestId}] Fallback preview URL from format: ${previewUrl}`);
+        }
       }
     }
 
-    if (thumbnail && isValidThumbnailUrl(thumbnail)) {
-      console.log(`[${requestId}] Wrapping thumbnail in proxy URL`);
-      thumbnail = `/api/thumbnail?url=${encodeURIComponent(thumbnail)}`;
-    } else if (thumbnail) {
-      console.log(`[${requestId}] Thumbnail URL validation failed: ${thumbnail.substring(0, 80)}...`);
-      thumbnail = null;
-    }
+    let thumbnail = previewUrl;
 
     // Filter out subtitle/caption formats, storyboards, DASH-only assets, and unsupported streams
     formats = formats.filter(f => {
@@ -169,7 +181,14 @@ router.post('/', async (req, res) => {
     // For audio: prioritize audio-only, then fallback to formats with audio track
     const audioCandidates = formats
       .filter((format) => isAudioOnly(format) || hasAudioCodec(format))
-      .sort((a, b) => getFormatScore(b) - getFormatScore(a));
+      .sort((a, b) => {
+        const aPriority = isAudioOnly(a) ? 1 : 0;
+        const bPriority = isAudioOnly(b) ? 1 : 0;
+        if (aPriority !== bPriority) {
+          return bPriority - aPriority;
+        }
+        return getFormatScore(b) - getFormatScore(a);
+      });
 
     const bestMp4 = mp4Candidates[0] || null;
     const bestAudio = audioCandidates[0] || null;
@@ -245,13 +264,14 @@ router.post('/', async (req, res) => {
       }
     }
 
-    console.log(`[${requestId}] Response ready - Title: ${title}, Type: ${mediaType}, Formats: ${downloads.length}`);
+    console.log(`[${requestId}] Response ready - Title: ${title}, Type: ${mediaType}, Formats: ${downloads.length}, previewUrl: ${previewUrl || 'null'}`);
 
     return res.json({
       success: true,
       platform,
       title,
       thumbnail,
+      previewUrl: previewUrl || null,
       mediaType,
       downloads
     });
@@ -276,45 +296,134 @@ function decodeHtmlEntities(text) {
     .replace(/&nbsp;/g, ' ');
 }
 
+function normalizeThumbnailUrl(url) {
+  if (!url || typeof url !== 'string') return null;
+  let normalized = url.trim();
+  if (!normalized) return null;
+  if (normalized.startsWith('//')) {
+    normalized = 'https:' + normalized;
+  }
+  if (normalized.startsWith('/')) {
+    normalized = 'https://www.instagram.com' + normalized;
+  }
+  if (!/^https?:\/\//i.test(normalized)) return null;
+  return normalized;
+}
+
 function isImageUrl(url) {
   return typeof url === 'string' && /\.(jpe?g|png|webp|gif|svg)(\?.*)?$/i.test(url);
 }
 
 function isValidThumbnailUrl(url) {
-  return typeof url === 'string' && /^https?:\/\//i.test(url);
+  return !!normalizeThumbnailUrl(url);
 }
 
-function extractBestThumbnail(video) {
-  // Priority 1: thumbnails array (most reliable)
-  if (Array.isArray(video.thumbnails) && video.thumbnails.length > 0) {
-    for (let i = 0; i < video.thumbnails.length; i++) {
-      const thumb = video.thumbnails[i];
-      if (thumb && thumb.url && isValidThumbnailUrl(thumb.url)) {
-        console.log(`[thumb] Using thumbnails[${i}].url`);
-        return thumb.url;
+function getBestThumbnailUrl(video) {
+  const candidates = [];
+
+  if (Array.isArray(video.thumbnails)) {
+    for (const thumb of video.thumbnails) {
+      if (!thumb) continue;
+      if (typeof thumb === 'string') {
+        candidates.push(thumb);
+      } else if (typeof thumb === 'object') {
+        candidates.push(thumb.url || thumb.src || thumb.thumbnail || thumb.thumbnail_url || thumb.display_url || thumb.displayUrl);
       }
     }
   }
-  // Priority 2: display_url (Instagram-specific)
-  if (video.display_url && isValidThumbnailUrl(video.display_url)) {
-    console.log('[thumb] Using display_url');
-    return video.display_url;
+
+  candidates.push(
+    video.display_url,
+    video.displayUrl,
+    video.thumbnail,
+    video.thumbnail_url,
+    video.thumbnailSrc,
+    video.thumbnailSrc,
+    video.url
+  );
+
+  for (const candidate of candidates) {
+    const normalized = normalizeThumbnailUrl(candidate);
+    if (normalized) {
+      return normalized;
+    }
   }
-  if (video.displayUrl && isValidThumbnailUrl(video.displayUrl)) {
-    console.log('[thumb] Using displayUrl');
-    return video.displayUrl;
-  }
-  // Priority 3: thumbnail
-  if (video.thumbnail && isValidThumbnailUrl(video.thumbnail)) {
-    console.log('[thumb] Using thumbnail');
-    return video.thumbnail;
-  }
-  if (video.thumbnail_url && isValidThumbnailUrl(video.thumbnail_url)) {
-    console.log('[thumb] Using thumbnail_url');
-    return video.thumbnail_url;
-  }
-  console.log('[thumb] No valid thumbnail found');
+
   return null;
+}
+
+async function fetchInstagramOgImage(url) {
+  const response = await axios({
+    method: 'GET',
+    url,
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/115.0 Safari/537.36',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      'Accept-Language': 'en-US,en;q=0.9',
+      'Referer': 'https://www.instagram.com/'
+    },
+    timeout: 15000,
+    maxRedirects: 5
+  });
+
+  const html = response.data;
+  const metaMatch = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i);
+  if (metaMatch && metaMatch[1]) {
+    return normalizeThumbnailUrl(metaMatch[1]);
+  }
+
+  const twitterMatch = html.match(/<meta[^>]+name=["']twitter:image["'][^>]+content=["']([^"']+)["']/i);
+  if (twitterMatch && twitterMatch[1]) {
+    return normalizeThumbnailUrl(twitterMatch[1]);
+  }
+
+  const ldJsonMatch = html.match(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/i);
+  if (ldJsonMatch && ldJsonMatch[1]) {
+    try {
+      const data = JSON.parse(ldJsonMatch[1]);
+      if (data && data.image) {
+        return normalizeThumbnailUrl(typeof data.image === 'string' ? data.image : data.image.url || (Array.isArray(data.image) ? data.image[0] : null));
+      }
+    } catch (e) {
+      console.log(`[thumbnail] Failed to parse ld+json image metadata: ${e.message}`);
+    }
+  }
+
+  const jsonMatch = html.match(/<script[^>]+type=["']application\/json["'][^>]*>([\s\S]*?)<\/script>/i);
+  if (jsonMatch && jsonMatch[1]) {
+    try {
+      const data = JSON.parse(jsonMatch[1]);
+      if (data) {
+        const cand = data.display_url || data.thumbnail_url || data.image || (data.image && data.image.url) || null;
+        if (cand) {
+          return normalizeThumbnailUrl(typeof cand === 'string' ? cand : Array.isArray(cand) ? cand[0] : cand.url);
+        }
+      }
+    } catch (e) {
+      console.log(`[thumbnail] Failed to parse application/json metadata: ${e.message}`);
+    }
+  }
+
+  throw new Error('Could not find og:image or equivalent preview metadata');
+}
+
+function logThumbnailFields(requestId, video) {
+  const fields = {
+    thumbnail: video.thumbnail || null,
+    thumbnail_url: video.thumbnail_url || null,
+    display_url: video.display_url || null,
+    displayUrl: video.displayUrl || null,
+    thumbnailSrc: video.thumbnailSrc || null,
+    url: video.url || null,
+    thumbnails: Array.isArray(video.thumbnails)
+      ? video.thumbnails.slice(0, 5).map((thumb) => {
+          if (!thumb) return null;
+          if (typeof thumb === 'string') return thumb;
+          return thumb.url || thumb.src || thumb.thumbnail || thumb.thumbnail_url || thumb.display_url || thumb.displayUrl || null;
+        })
+      : null
+  };
+  console.log(`[${requestId}] Thumbnail-related fields: ${JSON.stringify(fields)}`);
 }
 
 router.get('/thumbnail', async (req, res) => {

@@ -108,16 +108,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
             hideError();
             
-            // Thumbnail handling: ensure valid absolute URL
+            // Thumbnail handling: prefer the backend-validated preview URL
             let previewUrl = '';
-            if (data.thumbnail && typeof data.thumbnail === 'string') {
+            if (data.previewUrl && typeof data.previewUrl === 'string') {
+                previewUrl = data.previewUrl.trim();
+            } else if (data.thumbnail && typeof data.thumbnail === 'string') {
                 previewUrl = data.thumbnail.trim();
-                // Ensure absolute URL for mobile compatibility
-                if (previewUrl && !previewUrl.startsWith('http')) {
+            }
+            if (previewUrl && !previewUrl.startsWith('http')) {
+                if (previewUrl.startsWith('//')) {
+                    previewUrl = window.location.protocol + previewUrl;
+                } else {
                     previewUrl = window.location.origin + (previewUrl.startsWith('/') ? previewUrl : '/' + previewUrl);
                 }
             }
-            
+
             // Configure image element with mobile-safe attributes
             resultThumbnail.src = '';
             resultThumbnail.alt = data.title || 'Media preview';
@@ -125,7 +130,6 @@ document.addEventListener('DOMContentLoaded', () => {
             resultThumbnail.loading = 'lazy';
             resultThumbnail.decoding = 'async';
             
-            // Set crossOrigin for CORS compatibility on mobile
             if (previewUrl && previewUrl.includes('/api/thumbnail')) {
                 resultThumbnail.crossOrigin = 'anonymous';
             }
