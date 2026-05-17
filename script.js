@@ -107,13 +107,37 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!resultCard) return;
 
             hideError();
-            const previewUrl = data.thumbnail || '';
-            resultThumbnail.src = previewUrl;
+            
+            // Thumbnail handling: prioritize valid preview URL
+            let previewUrl = '';
+            if (data.thumbnail) {
+                previewUrl = String(data.thumbnail).trim();
+                // Ensure absolute URL for mobile compatibility
+                if (previewUrl && !previewUrl.startsWith('http')) {
+                    previewUrl = window.location.origin + (previewUrl.startsWith('/') ? previewUrl : '/' + previewUrl);
+                }
+            }
+            
+            resultThumbnail.src = previewUrl || '';
             resultThumbnail.alt = data.title || 'Media preview';
             resultThumbnail.style.display = previewUrl ? '' : 'none';
-            resultThumbnail.onerror = () => {
+            
+            // Enhanced error handling for mobile browsers
+            resultThumbnail.onerror = function() {
+                console.warn('Thumbnail failed to load:', previewUrl);
                 resultThumbnail.style.display = 'none';
+                resultThumbnail.src = '';
             };
+            
+            // Force image load with mobile-friendly handling
+            if (previewUrl) {
+                resultThumbnail.onload = function() {
+                    resultThumbnail.style.display = '';
+                };
+                // Trigger load for cached images
+                resultThumbnail.src = previewUrl;
+            }
+            
             resultPlatform.textContent = data.platform || 'Instagram';
             if (resultMediaType) resultMediaType.textContent = data.mediaType || 'Media';
             resultTitle.textContent = data.title || 'Download ready';

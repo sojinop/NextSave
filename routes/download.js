@@ -101,6 +101,8 @@ router.post('/', async (req, res) => {
 
     const title = decodeHtmlEntities(video.title || 'Untitled');
     let thumbnail = extractBestThumbnail(video);
+    
+    console.log(`[${requestId}] Thumbnail extraction result:`, thumbnail ? `${thumbnail.substring(0, 80)}...` : 'null');
 
     let formats = Array.isArray(video.formats) ? video.formats : [];
     console.log(`[${requestId}] Total formats from metadata: ${formats.length}`);
@@ -109,11 +111,16 @@ router.post('/', async (req, res) => {
       const audioOrImageFormat = formats.find((format) => format.thumbnail || format.url);
       if (audioOrImageFormat) {
         thumbnail = audioOrImageFormat.thumbnail || audioOrImageFormat.url;
+        console.log(`[${requestId}] Thumbnail fallback from formats: ${thumbnail.substring(0, 80)}...`);
       }
     }
 
     if (thumbnail && isValidThumbnailUrl(thumbnail)) {
+      console.log(`[${requestId}] Wrapping thumbnail in proxy URL`);
       thumbnail = `/api/thumbnail?url=${encodeURIComponent(thumbnail)}`;
+    } else if (thumbnail) {
+      console.log(`[${requestId}] Thumbnail URL validation failed: ${thumbnail.substring(0, 80)}...`);
+      thumbnail = null;
     }
 
     // Filter out subtitle/caption formats, storyboards, DASH-only assets, and unsupported streams
@@ -279,27 +286,34 @@ function isValidThumbnailUrl(url) {
 
 function extractBestThumbnail(video) {
   // Priority 1: thumbnails array (most reliable)
-  if (Array.isArray(video.thumbnails)) {
-    for (let thumb of video.thumbnails) {
+  if (Array.isArray(video.thumbnails) && video.thumbnails.length > 0) {
+    for (let i = 0; i < video.thumbnails.length; i++) {
+      const thumb = video.thumbnails[i];
       if (thumb && thumb.url && isValidThumbnailUrl(thumb.url)) {
+        console.log(`[thumb] Using thumbnails[${i}].url`);
         return thumb.url;
       }
     }
   }
   // Priority 2: display_url (Instagram-specific)
   if (video.display_url && isValidThumbnailUrl(video.display_url)) {
+    console.log('[thumb] Using display_url');
     return video.display_url;
   }
   if (video.displayUrl && isValidThumbnailUrl(video.displayUrl)) {
+    console.log('[thumb] Using displayUrl');
     return video.displayUrl;
   }
   // Priority 3: thumbnail
   if (video.thumbnail && isValidThumbnailUrl(video.thumbnail)) {
+    console.log('[thumb] Using thumbnail');
     return video.thumbnail;
   }
   if (video.thumbnail_url && isValidThumbnailUrl(video.thumbnail_url)) {
+    console.log('[thumb] Using thumbnail_url');
     return video.thumbnail_url;
   }
+  console.log('[thumb] No valid thumbnail found');
   return null;
 }
 
@@ -320,19 +334,33 @@ router.get('/thumbnail', async (req, res) => {
       url: decodedUrl,
       responseType: 'stream',
       timeout: 15000,
+      maxRedirects: 5,
       headers: {
         'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/605.1.15',
-        'Accept': 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.9',
-        'Referer': 'https://www.instagram.com/'
+        'Accept': 'image/*,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9'
       }
     });
 
-    res.setHeader('Content-Type', response.headers['content-type'] || 'image/jpeg');
+    const contentType = response.headers['content-type'];
+    res.setHeader('Content-Type', contentType || 'image/jpeg');
+    res.setHeader('Cache-Control', 'public, max-age=604800');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    
     response.data.pipe(res);
+    response.data.on('error', (error) => {
+      console.error('Thumbnail stream error:', error.message);
+      if (!res.headersSent) {
+        res.status(500).json({ success: false, message: 'Unable to load thumbnail' });
+      }
+    });
   } catch (error) {
     console.error('Thumbnail proxy error:', error.message);
-    res.status(500).json({ success: false, message: 'Unable to load thumbnail' });
+    if (!res.headersSent) {
+      res.status(500).json({ success: false, message: 'Unable to load thumbnail' });
+    }
   }
 });
 
