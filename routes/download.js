@@ -104,54 +104,86 @@ router.post('/', async (req, res) => {
     console.log(`[${requestId}] Total formats from metadata: ${formats.length}`);
 
     if (!thumbnail && formats.length) {
-      const imageFormat = formats.find((format) => /\.(jpe?g|png|webp|gif|svg)(\?.*)?$/i.test(format.url));
+      const imageFormat = formats.find((format) => isImageUrl(format.thumbnail) || isImageUrl(format.url));
       if (imageFormat) {
-        thumbnail = imageFormat.url;
+        thumbnail = isImageUrl(imageFormat.thumbnail) ? imageFormat.thumbnail : imageFormat.url;
       }
     }
 
-    // Filter out subtitle/caption formats and storyboards
+    // Filter out subtitle/caption formats, storyboards, DASH-only assets, and unsupported streams
     formats = formats.filter(f => {
-      // Skip if no URL
       if (!f.url) return false;
-      // Skip if DRM protected
       if (f.drm) return false;
-      // Skip m3u8 streams
       if (f.protocol?.startsWith('m3u8')) return false;
-      // Skip storyboard formats (these are MHTML storyboards)
+      if (f.protocol?.toLowerCase().includes('dash')) return false;
       if (f.ext === 'mhtml') return false;
-      // Skip subtitle/caption formats
-      if (['srt', 'vtt', 'json3', 'srv1', 'srv2', 'srv3', 'ttml'].includes(f.ext)) return false;
-      // Keep anything else (audio, video, or other downloadable formats)
+      if (['srt', 'vtt', 'json3', 'srv1', 'srv2', 'srv3', 'ttml'].includes((f.ext || '').toLowerCase())) return false;
+      if (/dash/i.test(f.format || '') || /video only/i.test(f.format || '')) return false;
       return true;
     });
 
     console.log(`[${requestId}] Formats after filtering: ${formats.length}`);
 
-    const downloads = formats
-      .map((format) => {
-        const quality = format.height ? `${format.height}p` : format.abr ? `${format.abr}kbps` : format.format || 'best';
-        const ext = format.ext || 'mp4';
+    const getFormatScore = (format) => {
+      const height = parseInt(format.height, 10) || 0;
+      const abr = parseInt(format.abr, 10) || 0;
+      return height * 1000 + abr;
+    };
 
-        return {
-          id: format.format_id || `${ext}_${quality}`,
-          quality,
-          ext,
-          filesize: typeof format.filesize === 'number' ? format.filesize : null,
-          url: format.url,
-          note: format.format_note || format.format || ''
-        };
+    const isMergedMp4 = (format) => {
+      const ext = (format.ext || '').toLowerCase();
+      const formatText = (format.format || '').toLowerCase();
+      const hasVideo = format.vcodec !== 'none' && !/audio only/i.test(formatText);
+      const hasAudio = (typeof format.acodec === 'undefined' || format.acodec !== 'none') && !/video only/i.test(formatText);
+      return ext === 'mp4' && hasVideo && hasAudio;
+    };
+
+    const isAudioOnly = (format) => {
+      const ext = (format.ext || '').toLowerCase();
+      const formatText = (format.format || '').toLowerCase();
+      const audioOnlyHint = /audio only/i.test(formatText) || (format.vcodec === 'none' && format.acodec && format.acodec !== 'none');
+      return audioOnlyHint && ['mp3', 'm4a', 'ogg', 'wav', 'aac'].includes(ext);
+    };
+
+    const mp4Candidates = formats
+      .filter(isMergedMp4)
+      .sort((a, b) => getFormatScore(b) - getFormatScore(a));
+
+    const mp3Candidates = formats
+      .filter((format) => {
+        const ext = (format.ext || '').toLowerCase();
+        return ext === 'mp3' && isAudioOnly(format);
       })
-      .filter((format, index, all) => {
-        const label = `${format.quality}_${format.ext}`;
-        return all.findIndex((item) => `${item.quality}_${item.ext}` === label) === index;
-      })
-      .sort((a, b) => {
-        const aScore = parseInt(a.quality, 10) || 0;
-        const bScore = parseInt(b.quality, 10) || 0;
-        return bScore - aScore;
-      })
-      .slice(0, 8);
+      .sort((a, b) => getFormatScore(b) - getFormatScore(a));
+
+    const audioFallbackCandidates = formats
+      .filter((format) => isAudioOnly(format))
+      .sort((a, b) => getFormatScore(b) - getFormatScore(a));
+
+    const bestMp4 = mp4Candidates[0] || null;
+    const bestAudio = mp3Candidates[0] || audioFallbackCandidates[0] || null;
+
+    const downloads = [];
+    if (bestMp4) {
+      downloads.push({
+        id: bestMp4.format_id || `mp4_${bestMp4.height || 'best'}`,
+        quality: bestMp4.height ? `${bestMp4.height}p` : 'Best',
+        ext: 'mp4',
+        filesize: typeof bestMp4.filesize === 'number' ? bestMp4.filesize : null,
+        url: bestMp4.url,
+        note: bestMp4.format_note || bestMp4.format || 'Best video with audio'
+      });
+    }
+    if (bestAudio) {
+      downloads.push({
+        id: bestAudio.format_id || `mp3_${bestAudio.abr || 'audio'}`,
+        quality: bestAudio.abr ? `${bestAudio.abr}kbps` : 'Audio',
+        ext: 'mp3',
+        filesize: typeof bestAudio.filesize === 'number' ? bestAudio.filesize : null,
+        url: bestAudio.url,
+        note: bestAudio.format_note || bestAudio.format || 'Audio only'
+      });
+    }
 
     console.log(`[${requestId}] Final download options: ${downloads.length}`);
     if (downloads.length > 0) {
@@ -219,6 +251,10 @@ function decodeHtmlEntities(text) {
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
     .replace(/&nbsp;/g, ' ');
+}
+
+function isImageUrl(url) {
+  return typeof url === 'string' && /\.(jpe?g|png|webp|gif|svg)(\?.*)?$/i.test(url);
 }
 
 router.get('/file/:id', async (req, res) => {
