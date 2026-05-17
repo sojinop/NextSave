@@ -107,16 +107,19 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!resultCard) return;
 
             hideError();
-            const previewUrl = data.thumbnail && /\.(jpe?g|png|webp|gif|svg)(\?.*)?$/i.test(data.thumbnail) ? data.thumbnail : '';
+            const previewUrl = data.thumbnail || '';
             resultThumbnail.src = previewUrl;
             resultThumbnail.alt = data.title || 'Media preview';
             resultThumbnail.style.display = previewUrl ? '' : 'none';
+            resultThumbnail.onerror = () => {
+                resultThumbnail.style.display = 'none';
+            };
             resultPlatform.textContent = data.platform || 'Instagram';
             if (resultMediaType) resultMediaType.textContent = data.mediaType || 'Media';
             resultTitle.textContent = data.title || 'Download ready';
             downloadActions.innerHTML = data.downloads.map((item) => {
                 const label = item.note ? `${item.quality} · ${item.ext.toUpperCase()} · ${item.note}` : `${item.quality} · ${item.ext.toUpperCase()}`;
-                const downloadUrl = `/api/download/file/${item.id}?url=${encodeURIComponent(item.url)}&title=${encodeURIComponent(data.title || 'download')}&ext=${item.ext}`;
+                const downloadUrl = `/api/download/file/${item.id}?url=${encodeURIComponent(item.url)}&title=${encodeURIComponent(data.title || 'download')}&ext=${item.ext}${item.srcExt ? `&srcExt=${encodeURIComponent(item.srcExt)}` : ''}`;
                 return `<a class="download-option" href="${downloadUrl}" target="_blank" rel="noopener noreferrer">${label}</a>`;
             }).join('');
             resultCard.classList.remove('hidden');

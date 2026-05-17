@@ -148,6 +148,10 @@ function parseInstagramResult(result, code) {
     title = decodedCaption;
   }
 
+  if (result.display_url && isValidThumbnailUrl(result.display_url)) {
+    maybeSetThumbnail(result.display_url);
+  }
+
   if (result.data && Array.isArray(result.data)) {
     result.data.forEach((item, i) => {
       if (!item.url) return;
@@ -164,8 +168,11 @@ function parseInstagramResult(result, code) {
 
       addFormat(item.url, itemType === 'video' ? 'Video' : 'Image', ext, `data_${i}`);
 
-      if (item.thumbnail && isImageUrl(item.thumbnail)) {
+      if (item.thumbnail && isValidThumbnailUrl(item.thumbnail)) {
         maybeSetThumbnail(item.thumbnail);
+      }
+      if (item.display_url && isValidThumbnailUrl(item.display_url)) {
+        maybeSetThumbnail(item.display_url);
       }
     });
   }
@@ -188,12 +195,16 @@ function parseInstagramResult(result, code) {
     }
   }
 
-  if (result.thumbnail && isImageUrl(result.thumbnail)) {
+  if (isValidThumbnailUrl(result.thumbnail)) {
     thumbnail = result.thumbnail;
   }
 
+  if (!thumbnail && isValidThumbnailUrl(result.display_url)) {
+    thumbnail = result.display_url;
+  }
+
   if (!thumbnail) {
-    const imageFormat = formats.find((item) => isImageUrl(item.url));
+    const imageFormat = formats.find((item) => isValidThumbnailUrl(item.url));
     if (imageFormat) {
       thumbnail = imageFormat.url;
     }
@@ -225,6 +236,10 @@ function decodeHtmlEntities(text) {
 
 function isImageUrl(url) {
   return typeof url === 'string' && /\.(jpe?g|png|webp|gif|svg)(\?.*)?$/i.test(url);
+}
+
+function isValidThumbnailUrl(url) {
+  return typeof url === 'string' && /^https?:\/\//i.test(url);
 }
 
 function isVideoUrl(url) {

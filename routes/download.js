@@ -1,5 +1,7 @@
 const express = require('express');
 const axios = require('axios');
+const { spawn } = require('child_process');
+const ffmpeg = require('ffmpeg-static');
 const { detectPlatform, isSupportedUrl } = require('../utils/urlValidator');
 const { fetchMediaInfo, checkYtDlp } = require('../utils/yt-dlp');
 const { extractInstagramMedia } = require('../utils/instagramExtractor');
@@ -98,16 +100,20 @@ router.post('/', async (req, res) => {
     const video = Array.isArray(metadata.entries) ? metadata.entries[0] : metadata;
 
     const title = decodeHtmlEntities(video.title || 'Untitled');
-    let thumbnail = video.thumbnail || (video.thumbnails && video.thumbnails[0] && video.thumbnails[0].url) || null;
+    let thumbnail = extractBestThumbnail(video);
 
     let formats = Array.isArray(video.formats) ? video.formats : [];
     console.log(`[${requestId}] Total formats from metadata: ${formats.length}`);
 
     if (!thumbnail && formats.length) {
-      const imageFormat = formats.find((format) => isImageUrl(format.thumbnail) || isImageUrl(format.url));
-      if (imageFormat) {
-        thumbnail = isImageUrl(imageFormat.thumbnail) ? imageFormat.thumbnail : imageFormat.url;
+      const audioOrImageFormat = formats.find((format) => format.thumbnail || format.url);
+      if (audioOrImageFormat) {
+        thumbnail = audioOrImageFormat.thumbnail || audioOrImageFormat.url;
       }
+    }
+
+    if (thumbnail && isValidThumbnailUrl(thumbnail)) {
+      thumbnail = `/api/thumbnail?url=${encodeURIComponent(thumbnail)}`;
     }
 
     // Filter out subtitle/caption formats, storyboards, DASH-only assets, and unsupported streams
@@ -149,19 +155,12 @@ router.post('/', async (req, res) => {
       .filter(isMergedMp4)
       .sort((a, b) => getFormatScore(b) - getFormatScore(a));
 
-    const mp3Candidates = formats
-      .filter((format) => {
-        const ext = (format.ext || '').toLowerCase();
-        return ext === 'mp3' && isAudioOnly(format);
-      })
-      .sort((a, b) => getFormatScore(b) - getFormatScore(a));
-
-    const audioFallbackCandidates = formats
+    const audioCandidates = formats
       .filter((format) => isAudioOnly(format))
       .sort((a, b) => getFormatScore(b) - getFormatScore(a));
 
     const bestMp4 = mp4Candidates[0] || null;
-    const bestAudio = mp3Candidates[0] || audioFallbackCandidates[0] || null;
+    const bestAudio = audioCandidates[0] || null;
 
     const downloads = [];
     if (bestMp4) {
@@ -179,6 +178,7 @@ router.post('/', async (req, res) => {
         id: bestAudio.format_id || `mp3_${bestAudio.abr || 'audio'}`,
         quality: bestAudio.abr ? `${bestAudio.abr}kbps` : 'Audio',
         ext: 'mp3',
+        srcExt: bestAudio.ext || '',
         filesize: typeof bestAudio.filesize === 'number' ? bestAudio.filesize : null,
         url: bestAudio.url,
         note: bestAudio.format_note || bestAudio.format || 'Audio only'
@@ -257,12 +257,65 @@ function isImageUrl(url) {
   return typeof url === 'string' && /\.(jpe?g|png|webp|gif|svg)(\?.*)?$/i.test(url);
 }
 
+function isValidThumbnailUrl(url) {
+  return typeof url === 'string' && /^https?:\/\//i.test(url);
+}
+
+function extractBestThumbnail(video) {
+  const candidates = [];
+  if (video.thumbnail) candidates.push(video.thumbnail);
+  if (Array.isArray(video.thumbnails)) {
+    video.thumbnails.forEach((thumb) => {
+      if (thumb && thumb.url) candidates.push(thumb.url);
+    });
+  }
+  if (video.display_url) candidates.push(video.display_url);
+  if (video.displayUrl) candidates.push(video.displayUrl);
+  if (video.thumbnail_url) candidates.push(video.thumbnail_url);
+  if (video.display_url === undefined && video.thumbnail === undefined && video.url && isImageUrl(video.url)) candidates.push(video.url);
+
+  return candidates.find(isValidThumbnailUrl) || null;
+}
+
+router.get('/thumbnail', async (req, res) => {
+  const url = req.query.url;
+  if (!url) {
+    return res.status(400).json({ success: false, message: 'Missing thumbnail url' });
+  }
+
+  const decodedUrl = decodeURIComponent(url);
+  if (!/^https?:\/\//i.test(decodedUrl)) {
+    return res.status(400).json({ success: false, message: 'Invalid thumbnail url' });
+  }
+
+  try {
+    const response = await axios({
+      method: 'GET',
+      url: decodedUrl,
+      responseType: 'stream',
+      timeout: 15000,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/605.1.15',
+        'Accept': 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Referer': 'https://www.instagram.com/'
+      }
+    });
+
+    res.setHeader('Content-Type', response.headers['content-type'] || 'image/jpeg');
+    response.data.pipe(res);
+  } catch (error) {
+    console.error('Thumbnail proxy error:', error.message);
+    res.status(500).json({ success: false, message: 'Unable to load thumbnail' });
+  }
+});
+
 router.get('/file/:id', async (req, res) => {
   const { id } = req.params;
-  const { url, title, ext } = req.query;
+  const { url, title, ext, srcExt } = req.query;
   const requestId = Math.random().toString(36).substring(7);
 
-  console.log(`[${requestId}] Download file request - ID: ${id}, Ext: ${ext}`);
+  console.log(`[${requestId}] Download file request - ID: ${id}, Ext: ${ext}, srcExt: ${srcExt || 'unknown'}`);
 
   if (!url || !title || !ext) {
     console.log(`[${requestId}] Missing required parameters`);
@@ -270,11 +323,10 @@ router.get('/file/:id', async (req, res) => {
   }
 
   try {
-    // Decode the URL if it was encoded
     const decodedUrl = decodeURIComponent(url);
+    const sourceExt = (srcExt || '').toLowerCase();
     console.log(`[${requestId}] Starting download from: ${decodedUrl.substring(0, 100)}...`);
 
-    // Set content type based on file extension
     const contentType = ext === 'mp4' ? 'video/mp4' :
                        ext === 'webm' ? 'video/webm' :
                        ext === 'mp3' ? 'audio/mpeg' :
@@ -283,23 +335,25 @@ router.get('/file/:id', async (req, res) => {
                        ext === 'png' ? 'image/png' :
                        'application/octet-stream';
 
-    // Sanitize filename - remove special characters that could cause issues
     const sanitizedTitle = title.replace(/[^a-zA-Z0-9\s\-_]/g, '').replace(/\s+/g, '_').trim();
     const filename = `${sanitizedTitle}.${ext}`;
 
-    // Set headers for download
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.setHeader('Content-Type', contentType);
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
 
-    // Stream the file from the source URL with proper options
+    if (ext === 'mp3' && sourceExt !== 'mp3') {
+      await streamAudioAsMp3(decodedUrl, res, requestId);
+      return;
+    }
+
     const response = await axios({
       method: 'GET',
       url: decodedUrl,
       responseType: 'stream',
-      timeout: 60000, // 60 second timeout for large files
+      timeout: 60000,
       maxRedirects: 5,
       headers: {
         'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1',
@@ -310,11 +364,7 @@ router.get('/file/:id', async (req, res) => {
     });
 
     console.log(`[${requestId}] Stream started, file size: ${response.headers['content-length'] || 'unknown'}`);
-
-    // Pipe the response stream to the client
     response.data.pipe(res);
-
-    // Handle errors during streaming
     response.data.on('error', (error) => {
       console.error(`[${requestId}] Stream error:`, error);
       if (!res.headersSent) {
@@ -328,6 +378,58 @@ router.get('/file/:id', async (req, res) => {
     }
   }
 });
+
+async function streamAudioAsMp3(sourceUrl, res, requestId) {
+  try {
+    const ffmpegProcess = spawn(ffmpeg, [
+      '-i', 'pipe:0',
+      '-f', 'mp3',
+      '-codec:a', 'libmp3lame',
+      '-q:a', '4',
+      'pipe:1'
+    ], { stdio: ['pipe', 'pipe', 'pipe'] });
+
+    ffmpegProcess.on('error', (error) => {
+      console.error(`[${requestId}] FFmpeg error:`, error);
+      if (!res.headersSent) {
+        res.status(500).json({ success: false, message: 'Audio conversion failed.' });
+      }
+    });
+
+    const response = await axios({
+      method: 'GET',
+      url: sourceUrl,
+      responseType: 'stream',
+      timeout: 60000,
+      maxRedirects: 5,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1',
+        'Accept': '*/*',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Referer': sourceUrl
+      }
+    });
+
+    response.data.pipe(ffmpegProcess.stdin);
+    res.setHeader('Content-Type', 'audio/mpeg');
+    ffmpegProcess.stdout.pipe(res);
+
+    ffmpegProcess.stderr.on('data', (chunk) => {
+      console.log(`[${requestId}] FFmpeg: ${chunk.toString().trim()}`);
+    });
+
+    ffmpegProcess.on('close', (code) => {
+      if (code !== 0) {
+        console.error(`[${requestId}] FFmpeg exited with code ${code}`);
+      }
+    });
+  } catch (error) {
+    console.error(`[${requestId}] Audio conversion proxy error: ${error.message}`);
+    if (!res.headersSent) {
+      res.status(500).json({ success: false, message: 'Unable to convert audio to MP3.' });
+    }
+  }
+}
 
 // Health check endpoint
 router.get('/health', async (req, res) => {
