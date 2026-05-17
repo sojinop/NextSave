@@ -108,45 +108,126 @@ document.addEventListener('DOMContentLoaded', () => {
 
             hideError();
             
-            // Thumbnail handling: prioritize valid preview URL
+            // Thumbnail handling: ensure valid absolute URL
             let previewUrl = '';
-            if (data.thumbnail) {
-                previewUrl = String(data.thumbnail).trim();
+            if (data.thumbnail && typeof data.thumbnail === 'string') {
+                previewUrl = data.thumbnail.trim();
                 // Ensure absolute URL for mobile compatibility
                 if (previewUrl && !previewUrl.startsWith('http')) {
                     previewUrl = window.location.origin + (previewUrl.startsWith('/') ? previewUrl : '/' + previewUrl);
                 }
             }
             
-            resultThumbnail.src = previewUrl || '';
+            // Configure image element with mobile-safe attributes
+            resultThumbnail.src = '';
             resultThumbnail.alt = data.title || 'Media preview';
-            resultThumbnail.style.display = previewUrl ? '' : 'none';
+            resultThumbnail.style.display = 'none';
+            resultThumbnail.loading = 'lazy';
+            resultThumbnail.decoding = 'async';
+            
+            // Set crossOrigin for CORS compatibility on mobile
+            if (previewUrl && previewUrl.includes('/api/thumbnail')) {
+                resultThumbnail.crossOrigin = 'anonymous';
+            }
             
             // Enhanced error handling for mobile browsers
-            resultThumbnail.onerror = function() {
+            const handleImageError = function() {
                 console.warn('Thumbnail failed to load:', previewUrl);
                 resultThumbnail.style.display = 'none';
                 resultThumbnail.src = '';
             };
             
-            // Force image load with mobile-friendly handling
+            // Success handler
+            const handleImageLoad = function() {
+                console.log('Thumbnail loaded successfully');
+                resultThumbnail.style.display = 'block';
+            };
+            
+            resultThumbnail.onerror = handleImageError;
+            resultThumbnail.onload = handleImageLoad;
+            
+            // Load thumbnail with validation
             if (previewUrl) {
-                resultThumbnail.onload = function() {
-                    resultThumbnail.style.display = '';
+                // Preload to validate before setting src
+                const preloader = new Image();
+                preloader.onload = function() {
+                    console.log('Image preload successful, setting main src');
+                    resultThumbnail.src = previewUrl;
+                    resultThumbnail.style.display = 'block';
                 };
-                // Trigger load for cached images
-                resultThumbnail.src = previewUrl;
+                preloader.onerror = function() {
+                    console.warn('Image preload failed');
+                    handleImageError();
+                };
+                preloader.crossOrigin = resultThumbnail.crossOrigin;
+                preloader.src = previewUrl;
+            }
+            
+            // Add iOS tap-to-preview functionality for reels/videos
+            if (data.mediaType === 'Video' && data.platform === 'Instagram') {
+                const thumbContainer = resultThumbnail.parentElement;
+                if (thumbContainer) {
+                    thumbContainer.style.cursor = 'pointer';
+                    
+                    // Remove old listener if exists
+                    thumbContainer.onclick = null;
+                    
+                    // Add iOS-compatible tap handler
+                    thumbContainer.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        // Show preview overlay on tap
+                        showPreviewOverlay(data, previewUrl);
+                    }, { passive: false });
+                    
+                    // Add visual feedback for iOS
+                    thumbContainer.style.WebkitTouchCallout = 'none';
+                    thumbContainer.style.WebkitUserSelect = 'none';
+                }
             }
             
             resultPlatform.textContent = data.platform || 'Instagram';
             if (resultMediaType) resultMediaType.textContent = data.mediaType || 'Media';
             resultTitle.textContent = data.title || 'Download ready';
+            
             downloadActions.innerHTML = data.downloads.map((item) => {
                 const label = item.note ? `${item.quality} · ${item.ext.toUpperCase()} · ${item.note}` : `${item.quality} · ${item.ext.toUpperCase()}`;
                 const downloadUrl = `/api/download/file/${item.id}?url=${encodeURIComponent(item.url)}&title=${encodeURIComponent(data.title || 'download')}&ext=${item.ext}${item.srcExt ? `&srcExt=${encodeURIComponent(item.srcExt)}` : ''}`;
                 return `<a class="download-option" href="${downloadUrl}" target="_blank" rel="noopener noreferrer">${label}</a>`;
             }).join('');
+            
             resultCard.classList.remove('hidden');
+        };
+        
+        // iOS preview overlay handler
+        const showPreviewOverlay = (data, thumbnailUrl) => {
+            const overlay = document.createElement('div');
+            overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.95);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1rem;';
+            
+            const closeBtn = document.createElement('button');
+            closeBtn.style.cssText = 'position:absolute;top:1rem;right:1rem;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:white;width:44px;height:44px;border-radius:50%;cursor:pointer;font-size:24px;display:flex;align-items:center;justify-content:center;z-index:10000;';
+            closeBtn.innerHTML = '×';
+            closeBtn.onclick = (e) => {
+                e.stopPropagation();
+                overlay.remove();
+            };
+            
+            const img = document.createElement('img');
+            img.src = thumbnailUrl;
+            img.style.cssText = 'max-width:100%;max-height:100%;object-fit:contain;border-radius:16px;';
+            img.crossOrigin = 'anonymous';
+            img.alt = data.title || 'Preview';
+            
+            overlay.appendChild(img);
+            overlay.appendChild(closeBtn);
+            overlay.onclick = (e) => {
+                if (e.target === overlay) {
+                    overlay.remove();
+                }
+            };
+            
+            document.body.appendChild(overlay);
         };
 
         form.addEventListener('submit', async (e) => {
